@@ -1,0 +1,11 @@
+[2025-12-30 15:58:10] [INFO] Starting IP lock expiry cron job
+[2025-12-30 15:58:10] [WARNING] Error getting system user ID: Unknown column 'role' in 'where clause'
+[2025-12-30 15:58:10] [INFO] No expired locks found
+[2025-12-30 15:58:10] [INFO] IP lock expiry cron job completed
+[2025-12-30 15:58:27] [INFO] Starting IP lock expiry cron job
+[2025-12-30 15:58:27] [WARNING] Error getting system user ID: Unknown column 'is_admin' in 'where clause'
+[2025-12-30 15:58:27] [INFO] No expired locks found
+[2025-12-30 15:58:27] [INFO] IP lock expiry cron job completed
+[2025-12-30 15:58:43] [INFO] Starting IP lock expiry cron job
+[2025-12-30 15:58:43] [INFO] No expired locks found
+[2025-12-30 15:58:43] [INFO] IP lock expiry cron job completed

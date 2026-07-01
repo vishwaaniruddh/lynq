@@ -1,0 +1,14 @@
+[2026-01-01 07:06:40] [INFO] Starting JWT token cleanup cron job
+[2026-01-01 07:06:40] [INFO] Cleaning up expired refresh tokens...
+[2026-01-01 07:06:40] [INFO] Removed 0 expired refresh token(s)
+[2026-01-01 07:06:40] [INFO] Cleaning up expired blacklist entries...
+[2026-01-01 07:06:40] [INFO] Removed 0 expired blacklist entry(ies)
+[2026-01-01 07:06:40] [INFO] Total entries cleaned up: 0
+[2026-01-01 07:06:40] [INFO] JWT token cleanup cron job completed successfully
+[2026-01-01 07:07:34] [INFO] Starting JWT token cleanup cron job
+[2026-01-01 07:07:34] [INFO] Cleaning up expired refresh tokens...
+[2026-01-01 07:07:34] [INFO] Removed 0 expired refresh token(s)
+[2026-01-01 07:07:34] [INFO] Cleaning up expired blacklist entries...
+[2026-01-01 07:07:34] [INFO] Removed 0 expired blacklist entry(ies)
+[2026-01-01 07:07:34] [INFO] Total entries cleaned up: 0
+[2026-01-01 07:07:34] [INFO] JWT token cleanup cron job completed successfully

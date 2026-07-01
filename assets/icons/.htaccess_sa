@@ -1,0 +1,40 @@
+# PWA Icon MIME Type Configuration
+# Ensure proper MIME types for PWA icons
+
+<IfModule mod_mime.c>
+    # PNG images
+    AddType image/png .png
+    
+    # Set proper cache headers for icons
+    <FilesMatch "\.(png|ico)$">
+        # Cache icons for 1 year
+        ExpiresActive On
+        ExpiresDefault "access plus 1 year"
+        
+        # Add cache-control headers
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        
+        # Ensure proper content type
+        Header set Content-Type "image/png"
+    </FilesMatch>
+</IfModule>
+
+# Security headers for icon files
+<FilesMatch "\.(png|ico)$">
+    # Prevent hotlinking
+    SetEnvIf Referer "^https?://([^/]+\.)?clarity\.local" local_referer
+    SetEnvIf Referer "^https?://([^/]+\.)?localhost" local_referer
+    SetEnvIf Referer "^$" local_referer
+    Order Allow,Deny
+    Allow from env=local_referer
+    
+    # Add security headers
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+</FilesMatch>
+
+# Ensure icons are accessible
+<Files "icon-*.png">
+    Order Allow,Deny
+    Allow from all
+</Files>

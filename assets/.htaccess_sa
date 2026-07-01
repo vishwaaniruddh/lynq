@@ -1,0 +1,36 @@
+# PWA Assets MIME Type Configuration
+# Ensure proper MIME types for PWA-related files
+
+<IfModule mod_mime.c>
+    # Web App Manifest
+    AddType application/manifest+json .webmanifest
+    
+    # PNG images
+    AddType image/png .png
+    
+    # ICO files
+    AddType image/x-icon .ico
+    
+    # Set proper cache headers for static assets
+    <FilesMatch "\.(png|ico|webmanifest|css|js)$">
+        # Cache static assets for 1 month
+        ExpiresActive On
+        ExpiresDefault "access plus 1 month"
+        
+        # Add cache-control headers
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+    
+    # Special handling for PWA manifest
+    <Files "*.webmanifest">
+        Header set Content-Type "application/manifest+json"
+        Header set Cache-Control "public, max-age=86400"
+    </Files>
+</IfModule>
+
+# Security headers for assets
+<FilesMatch "\.(png|ico|css|js|webmanifest)$">
+    # Add security headers
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</FilesMatch>

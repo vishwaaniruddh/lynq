@@ -1,0 +1,24 @@
+<?php
+
+require_once __DIR__ . '/config/autoload.php';
+
+try {
+    $db = Database::getInstance()->getConnection();
+    
+    // Delete all sessions
+    $stmt = $db->query("DELETE FROM user_sessions");
+    echo "All sessions cleared.\n";
+    
+
+    $stmt = $db->query("SELECT NOW() as mysql_now, @@session.time_zone as tz");
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    echo "MySQL NOW(): " . $row['mysql_now'] . "\n";
+    echo "MySQL Timezone: " . $row['tz'] . "\n";
+    echo "PHP time(): " . date('Y-m-d H:i:s') . "\n";
+    echo "PHP Timezone: " . date_default_timezone_get() . "\n";
+    
+    echo "\nYou can now login again.\n";
+    
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}

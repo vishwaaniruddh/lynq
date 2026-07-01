@@ -1,0 +1,95 @@
+/* ADV CRM Custom Styles */
+
+/* Sidebar active state */
+.sidebar-link.active {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.sidebar-link:hover:not(.active) {
+    background-color: #f1f5f9;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Form focus states */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Table hover */
+table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Loading spinner */
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Alert animations */
+.alert-success, .alert-error, .alert-warning {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Card hover effect */
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .responsive-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Transition utilities */
+.transition-all {
+    transition: all 0.2s ease-in-out;
+}
+.nowrap {
+    white-space: nowrap;
+}

@@ -1,0 +1,32 @@
+i want supports like service Worker
+
+ 
+
+Background Sync
+
+Periodic Sync
+
+Push Notifications
+
+Offline Support
+
+
+
+.. 
+
+
+
+for feasibilty form if suppose eng dont have net connection .. 
+
+it will be store inside eng apk and whenever he gets connection it will automatically send data to server.. 
+
+
+
+
+
+
+
+
+
+
+

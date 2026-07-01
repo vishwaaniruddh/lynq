@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - ADV Clarity System</title>
+    <link rel="stylesheet" href="/assets/css/offline.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .offline-container {
+            text-align: center;
+            max-width: 500px;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .offline-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .features-list {
+            margin-top: 2rem;
+            text-align: left;
+        }
+        
+        .features-list h3 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .features-list ul {
+            list-style: none;
+        }
+        
+        .features-list li {
+            padding: 0.5rem 0;
+            opacity: 0.8;
+        }
+        
+        .features-list li:before {
+            content: "✓ ";
+            color: #4ade80;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        
+        .network-status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+        
+        .online {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .offline {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            📡
+        </div>
+        
+        <h1>You're Offline</h1>
+        
+        <p>
+            It looks like you've lost your internet connection. Don't worry - 
+            the ADV Clarity System is designed to work offline for essential tasks.
+        </p>
+        
+        <a href="/" class="retry-button" onclick="window.location.reload(); return false;">
+            Try Again
+        </a>
+        
+        <div class="features-list">
+            <h3>Available Offline Features:</h3>
+            <ul>
+                <li>View cached dashboard data</li>
+                <li>Browse previously loaded inventory</li>
+                <li>Access installation tracking</li>
+                <li>View site information</li>
+                <li>Queue actions for when you're back online</li>
+            </ul>
+        </div>
+        
+        <!-- Cached Data Display -->
+        <div class="cached-data-section">
+            <h3>Recently Cached Information</h3>
+            <div id="cached-dashboard-data" class="cached-data-list">
+                <div class="offline-data-container">
+                    <div class="icon">📊</div>
+                    <div class="title">Loading cached data...</div>
+                </div>
+            </div>
+            
+            <div id="cached-inventory-data" class="cached-data-list">
+                <div class="offline-data-container">
+                    <div class="icon">📦</div>
+                    <div class="title">Loading inventory cache...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Offline Actions Queue -->
+        <div id="offline-actions-summary" class="cached-data-section">
+            <h3>Queued Actions</h3>
+            <div class="cached-data-list">
+                <div class="cached-data-item">
+                    <span class="label">Pending actions:</span>
+                    <span class="value" id="queue-count">0</span>
+                </div>
+                <div class="cached-data-item">
+                    <span class="label">Last sync:</span>
+                    <span class="value" id="last-sync">Never</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="network-status" id="networkStatus">
+            <span id="statusText">Checking connection...</span>
+        </div>
+    </div>
+
+    <script src="/assets/js/offline-utils.js"></script>
+    <script>
+        // Network status monitoring
+        function updateNetworkStatus() {
+            const statusElement = document.getElementById('networkStatus');
+            const statusText = document.getElementById('statusText');
+            
+            if (navigator.onLine) {
+                statusElement.className = 'network-status online';
+                statusText.textContent = '🟢 Connection restored! You can now sync your data.';
+                
+                // Auto-redirect after a short delay when back online
+                setTimeout(() => {
+                    window.location.href = '/dashboard.php';
+                }, 2000);
+            } else {
+                statusElement.className = 'network-status offline';
+                statusText.textContent = '🔴 No internet connection detected.';
+            }
+        }
+        
+        // Listen for network status changes
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        
+        // Initial status check
+        updateNetworkStatus();
+        
+        // Periodic connection check
+        setInterval(() => {
+            // Try to fetch a small resource to verify connectivity
+            fetch('/favicon.ico', { 
+                method: 'HEAD',
+                cache: 'no-cache'
+            })
+            .then(() => {
+                if (!navigator.onLine) {
+                    // Force online status update
+                    window.dispatchEvent(new Event('online'));
+                }
+            })
+            .catch(() => {
+                if (navigator.onLine) {
+                    // Force offline status update
+                    window.dispatchEvent(new Event('offline'));
+                }
+            });
+        }, 5000);
+        
+        // Service worker messaging
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data && event.data.type === 'CACHE_UPDATED') {
+                    console.log('Cache updated, content may be available');
+                }
+            });
+        }
+        
+        // Load offline data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOfflineData();
+        });
+        
+        // Load cached data and offline statistics
+        function loadOfflineData() {
+            // Wait for offline utils to be available
+            if (typeof OfflineUtils === 'undefined') {
+                setTimeout(loadOfflineData, 100);
+                return;
+            }
+            
+            const offlineUtils = new OfflineUtils();
+            const stats = offlineUtils.getOfflineStats();
+            
+            // Update queue count
+            document.getElementById('queue-count').textContent = stats.queuedActions;
+            
+            // Update last sync
+            const lastSyncElement = document.getElementById('last-sync');
+            if (stats.lastSync) {
+                lastSyncElement.textContent = new Date(parseInt(stats.lastSync)).toLocaleString();
+            } else {
+                lastSyncElement.textContent = 'Never';
+            }
+            
+            // Load cached dashboard data
+            const dashboardData = offlineUtils.getCachedData('dashboard');
+            if (dashboardData) {
+                displayCachedDashboard(dashboardData);
+            } else {
+                document.getElementById('cached-dashboard-data').innerHTML = `
+                    <div class="offline-data-container">
+                        <div class="icon">📊</div>
+                        <div class="title">No Dashboard Cache</div>
+                        <div class="description">Visit the dashboard while online to cache data</div>
+                    </div>
+                `;
+            }
+            
+            // Load cached inventory data
+            const inventoryData = offlineUtils.getCachedData('inventory');
+            if (inventoryData) {
+                displayCachedInventory(inventoryData);
+            } else {
+                document.getElementById('cached-inventory-data').innerHTML = `
+                    <div class="offline-data-container">
+                        <div class="icon">📦</div>
+                        <div class="title">No Inventory Cache</div>
+                        <div class="description">Visit inventory pages while online to cache data</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Display cached dashboard data
+        function displayCachedDashboard(data) {
+            const container = document.getElementById('cached-dashboard-data');
+            let content = '<div class="cached-data"><div class="timestamp">Dashboard Cache Available</div>';
+            
+            if (data.stats) {
+                content += '<div class="cached-data-item"><span class="label">Total Sites:</span><span class="value">' + (data.stats.totalSites || 0) + '</span></div>';
+                content += '<div class="cached-data-item"><span class="label">Active Installations:</span><span class="value">' + (data.stats.activeInstallations || 0) + '</span></div>';
+                content += '<div class="cached-data-item"><span class="label">Pending Dispatches:</span><span class="value">' + (data.stats.pendingDispatches || 0) + '</span></div>';
+            }
+            
+            content += '</div>';
+            container.innerHTML = content;
+        }
+        
+        // Display cached inventory data
+        function displayCachedInventory(data) {
+            const container = document.getElementById('cached-inventory-data');
+            let content = '<div class="cached-data"><div class="timestamp">Inventory Cache Available</div>';
+            
+            if (data.summary) {
+                content += '<div class="cached-data-item"><span class="label">Total Products:</span><span class="value">' + (data.summary.totalProducts || 0) + '</span></div>';
+                content += '<div class="cached-data-item"><span class="label">Low Stock Items:</span><span class="value">' + (data.summary.lowStock || 0) + '</span></div>';
+                content += '<div class="cached-data-item"><span class="label">Warehouses:</span><span class="value">' + (data.summary.warehouses || 0) + '</span></div>';
+            }
+            
+            content += '</div>';
+            container.innerHTML = content;
+        }
+    </script>
+</body>
+</html>

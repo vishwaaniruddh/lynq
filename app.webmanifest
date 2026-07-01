@@ -1,0 +1,228 @@
+{
+  "name": "ADV Clarity Management System",
+  "short_name": "Clarity CRM",
+  "description": "Comprehensive ATM Installation and Inventory Management System for field operations, site management, and contractor coordination",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4a90e2",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "icons": [
+    {
+      "src": "assets/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshots/desktop-dashboard-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard Overview - Desktop View",
+      "platform": "wide"
+    },
+    {
+      "src": "assets/screenshots/desktop-inventory-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Inventory Management - Desktop View",
+      "platform": "wide"
+    },
+    {
+      "src": "assets/screenshots/mobile-dashboard-narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard Overview - Mobile View",
+      "platform": "narrow"
+    },
+    {
+      "src": "assets/screenshots/mobile-installation-narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Installation Tracking - Mobile View",
+      "platform": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View main dashboard with key metrics and recent activities",
+      "url": "/dashboard.php",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Installation Tracking",
+      "short_name": "Installations",
+      "description": "Track and manage ATM installations and assignments",
+      "url": "/installation/",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Inventory Management",
+      "short_name": "Inventory",
+      "description": "Manage stock, dispatches, and warehouse operations",
+      "url": "/inventory/",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Site Management",
+      "short_name": "Sites",
+      "description": "Manage sites, delegations, and engineer assignments",
+      "url": "/sites/",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Feasibility Tracking",
+      "short_name": "Feasibility",
+      "description": "Track feasibility studies and approval workflows",
+      "url": "/engineer/feasibility_list.php",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "protocol_handlers": [
+    {
+      "protocol": "web+clarity",
+      "url": "/handle-protocol?url=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/handle-file",
+      "accept": {
+        "text/csv": [".csv"],
+        "application/json": [".json"]
+      },
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "text/csv", "application/json"]
+        }
+      ]
+    }
+  },
+  "handle_links": "preferred",
+  "capture_links": "existing-client-navigate"
+}

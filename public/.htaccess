@@ -1,0 +1,12 @@
+# Public Asset View - No Authentication Required
+# Allow access to asset.php without login
+
+<Files "asset.php">
+    # Allow all access
+    Require all granted
+</Files>
+
+# Prevent access to other files in this directory
+<FilesMatch "^(?!asset\.php$).*">
+    Require all denied
+</FilesMatch>

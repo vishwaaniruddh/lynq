@@ -1,0 +1,9 @@
+PLACEHOLDER: This should be a 1280x720 screenshot of the ADV Clarity dashboard in desktop view showing:
+- Header with navigation and PWA install button
+- Sidebar with navigation menu
+- Main dashboard with statistics cards showing sites, delegations, users, companies, products, assets, warehouses, and IP configurations
+- Charts showing delegation status, asset status, and dispatch overview
+- Recent activity feed
+- Responsive grid layout optimized for wide screens
+
+This file should be replaced with an actual PNG screenshot during implementation.
