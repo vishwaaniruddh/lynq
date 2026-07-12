@@ -105,6 +105,41 @@ function getMenuIconColor($itemId) {
 }
 
 /**
+ * Helper function to determine if a menu item is active
+ */
+function isMenuItemActive($item, $currentPage) {
+    if (!isset($item['id']) || !$currentPage) {
+        return false;
+    }
+    
+    $itemId = $item['id'];
+    
+    // 1. Exact match
+    if ($itemId === $currentPage) {
+        return true;
+    }
+    
+    // 2. Prefix match (e.g., page 'sites' matches menu item 'sites_list', 'sites_add', etc.)
+    if (strpos($itemId, $currentPage . '_') === 0) {
+        return true;
+    }
+    
+    // 3. Request URI path match
+    if (isset($item['url']) && !empty($item['url'])) {
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        // Normalize URLs (remove leading slash, query string, and dots)
+        $itemUrlPath = parse_url($item['url'], PHP_URL_PATH);
+        $normalizedItemPath = ltrim($itemUrlPath, './');
+        
+        if (!empty($normalizedItemPath) && strpos($requestUri, $normalizedItemPath) !== false) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
  * Check if any child item is active in a section
  * @param array $items Menu items to check
  * @param string $currentPage Current page ID
@@ -119,7 +154,7 @@ function isAnyChildActive($items, $currentPage) {
             }
         } else {
             // Regular item
-            if (isset($item['id']) && $item['id'] === $currentPage) {
+            if (isMenuItemActive($item, $currentPage)) {
                 return true;
             }
         }
@@ -135,9 +170,8 @@ function isAnyChildActive($items, $currentPage) {
  * @return string HTML for the menu item
  */
 function renderMenuItem($item, $currentPage, $baseUrl) {
-    $isActive = ($currentPage ?? '') === ($item['id'] ?? '');
-    $activeClass = $isActive ? 'active text-white' : 'hover:text-white';
-    $iconColor = getMenuIconColor($item['id'] ?? '');
+    $isActive = isMenuItemActive($item, $currentPage);
+    $activeClass = $isActive ? 'active' : '';
     
     // Check for badge
     $badgeHtml = '';
@@ -149,9 +183,11 @@ function renderMenuItem($item, $currentPage, $baseUrl) {
         );
     }
     
+    $iconColor = getMenuIconColor($item['id'] ?? '');
+    
     return sprintf(
-        '<a href="%s%s" class="sidebar-link flex items-center px-3 py-2 rounded-md text-gray-300 text-sm %s" data-menu-id="%s">
-            <i class="fas %s w-4 mr-2 text-xs %s"></i>
+        '<a href="%s%s" class="sidebar-link flex items-center %s" data-menu-id="%s">
+            <i class="fas %s sidebar-icon %s"></i>
             <span>%s</span>
             %s
         </a>',
@@ -184,23 +220,23 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
     $isExpanded = isAnyChildActive($items, $currentPage);
     $expandedClass = $isExpanded ? '' : 'hidden';
     $chevronClass = $isExpanded ? 'rotate-90' : '';
+    $activeSectionClass = $isExpanded ? 'active-section' : '';
     
-    $marginClass = $isNested ? 'ml-2 mt-1' : 'mt-4 pt-3 border-t border-dark-600';
+    $marginClass = $isNested ? 'ml-2 mt-1' : 'sidebar-section-group';
     $paddingClass = $isNested ? 'pl-3' : '';
     
     $html = '<div class="' . $marginClass . '" data-section-container="' . htmlspecialchars($sectionId) . '">';
     
     // Section header (clickable to toggle) - more compact
     $html .= sprintf(
-        '<button type="button" class="collapsible-toggle w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-dark-500 uppercase tracking-wider hover:text-gray-300 transition" data-section="%s">
+        '<button type="button" class="collapsible-toggle w-full %s" data-section="%s">
             <span class="flex items-center">
-                <i class="fas %s mr-2 text-xs"></i>
                 %s
             </span>
-            <i class="fas fa-chevron-right text-xs transition-transform duration-200 %s" id="chevron-%s"></i>
+            <i class="fas fa-chevron-right sidebar-chevron %s" id="chevron-%s"></i>
         </button>',
+        $activeSectionClass,
         htmlspecialchars($sectionId),
-        htmlspecialchars($icon),
         htmlspecialchars($label),
         $chevronClass,
         htmlspecialchars($sectionId)
@@ -229,22 +265,206 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
     return $html;
 }
 ?>
-<aside id="sidebar" class="sidebar fixed left-0 top-0 w-64 h-full bg-dark-800 z-50 flex flex-col shadow-2xl">
+<aside id="sidebar" class="sidebar fixed left-0 top-0 w-64 h-full z-50 flex flex-col" style="background-color: #000000 !important; border-right: 1px solid #1f1f1f; box-shadow: none;">
+    <style>
+    /* =============================================
+       Premium Dark Sidebar — Compact Vercel-Style
+       ============================================= */
+
+    /* Base sidebar container */
+    #sidebar {
+        background-color: #000000 !important;
+        border-right: 1px solid #1f1f1f !important;
+        box-shadow: none !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+
+    /* Navigation area */
+    #sidebar nav {
+        padding: 4px 8px !important;
+    }
+
+    /* Custom dark scrollbar — Webkit */
+    #sidebar nav::-webkit-scrollbar {
+        width: 4px !important;
+    }
+    #sidebar nav::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+    #sidebar nav::-webkit-scrollbar-thumb {
+        background: #222 !important;
+        border-radius: 4px !important;
+    }
+    #sidebar nav::-webkit-scrollbar-thumb:hover {
+        background: #444 !important;
+    }
+    /* Firefox */
+    #sidebar nav {
+        scrollbar-width: thin !important;
+        scrollbar-color: #222 transparent !important;
+    }
+
+    /* ---- Menu Links ---- */
+    #sidebar .sidebar-link {
+        color: #a1a1aa !important;
+        font-size: 13px !important;
+        font-weight: 400 !important;
+        padding: 6px 10px !important;
+        border-radius: 5px !important;
+        margin-bottom: 1px !important;
+        transition: all 0.15s ease !important;
+        background: transparent !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        border: 1px solid transparent !important;
+        gap: 0 !important;
+        line-height: 1.3 !important;
+    }
+    #sidebar .sidebar-link:hover {
+        color: #ffffff !important;
+        background-color: rgba(255,255,255,0.06) !important;
+    }
+    #sidebar .sidebar-link.active,
+    #sidebar .sidebar-link.active:hover {
+        color: #ffffff !important;
+        background-color: rgba(255,255,255,0.1) !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        font-weight: 500 !important;
+    }
+
+    /* ---- Menu Icons (colorful per-item) ---- */
+    #sidebar .sidebar-link .sidebar-icon {
+        width: 16px !important;
+        min-width: 16px !important;
+        margin-right: 8px !important;
+        font-size: 13px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+        opacity: 0.8 !important;
+        transition: opacity 0.15s ease !important;
+    }
+    #sidebar .sidebar-link:hover .sidebar-icon {
+        opacity: 1 !important;
+    }
+    #sidebar .sidebar-link.active .sidebar-icon {
+        opacity: 1 !important;
+    }
+
+    /* ---- Section Group (top-level collapsible wrapper) ---- */
+    #sidebar .sidebar-section-group {
+        margin-top: 20px !important;
+        padding-top: 0 !important;
+        border-top: none !important;
+    }
+
+    /* ---- Collapsible Section Headers (Category Labels) ---- */
+    #sidebar .collapsible-toggle {
+        color: #52525b !important;
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        padding: 6px 8px !important;
+        margin: 0 0 4px 0 !important;
+        border: none !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        cursor: pointer !important;
+        width: 100% !important;
+        border-radius: 4px !important;
+        transition: all 0.15s ease !important;
+    }
+    #sidebar .collapsible-toggle:hover {
+        color: #a1a1aa !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+    #sidebar .collapsible-toggle.active-section {
+        color: #a1a1aa !important;
+    }
+
+    /* Category section chevron */
+    #sidebar .sidebar-chevron {
+        font-size: 8px !important;
+        color: #52525b !important;
+        margin-right: 2px !important;
+        transition: transform 0.2s ease, color 0.15s ease !important;
+    }
+    #sidebar .collapsible-toggle:hover .sidebar-chevron {
+        color: #a1a1aa !important;
+    }
+    #sidebar .collapsible-toggle.active-section .sidebar-chevron {
+        color: #a1a1aa !important;
+    }
+
+    /* ---- Submenu Tree guideline structure ---- */
+    #sidebar [data-section-content] {
+        margin-left: 14px !important;
+        border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding-left: 6px !important;
+        margin-top: 2px !important;
+        margin-bottom: 6px !important;
+    }
+
+    /* ---- Non-collapsible section labels (ADV Only, System, Admin) ---- */
+    #sidebar .sidebar-section-label {
+        color: #52525b !important;
+        font-size: 10.5px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        padding: 6px 8px !important;
+        margin: 0 0 4px 0 !important;
+        display: block !important;
+    }
+
+    /* ---- Static section wrappers (ADV Only, System, Admin) ---- */
+    #sidebar .sidebar-static-section {
+        margin-top: 20px !important;
+        padding-top: 0 !important;
+        border-top: none !important;
+    }
+
+    /* Remove all purple-tinted borders and background from data-section-container */
+    #sidebar [data-section-container] {
+        border: none !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* ---- User section at bottom ---- */
+    #sidebar .sidebar-user-section {
+        border-top: 1px solid #1f1f1f !important;
+        padding: 10px 12px !important;
+    }
+
+    /* Override any Tailwind space-y-* within sidebar */
+    #sidebar .space-y-1 > * + *,
+    #sidebar .space-y-0\.5 > * + * {
+        margin-top: 0 !important;
+    }
+    </style>
+
     <!-- Logo -->
-    <div class="p-4 border-b border-dark-600" style="background-color: #e1e1e1;">
-        <a href="<?php echo $baseUrl; ?>/dashboard.php" class="flex items-center justify-center">
-            <img src="<?php echo $baseUrl; ?>/assets/lynq.png" alt="LYNQ" class="h-12 object-contain">
+    <div style="padding: 14px 14px 12px 14px; border-bottom: 1px solid #1f1f1f;">
+        <a href="<?php echo $baseUrl; ?>/dashboard.php" style="display: flex; align-items: center;">
+            <img src="<?php echo $baseUrl; ?>/assets/lynq.png" alt="LYNQ" style="height: 22px; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.95;">
         </a>
     </div>
     
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto py-3 px-2">
-        <!-- Main Menu Section (Dashboard) -->
+        <!-- Main Menu Section -->
         <?php if (!empty($visibleMenus['main'])): ?>
-        <div class="space-y-1">
-            <?php foreach ($visibleMenus['main'] as $item): ?>
-            <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>
-            <?php endforeach; ?>
+        <div class="sidebar-static-section" style="margin-top: 4px !important;">
+            <p class="sidebar-section-label">Main Menu</p>
+            <div>
+                <?php foreach ($visibleMenus['main'] as $item): ?>
+                <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>
+                <?php endforeach; ?>
+            </div>
         </div>
         <?php endif; ?>
         
@@ -297,9 +517,9 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
         
         <!-- ADV Only Section - Only visible to ADV users -->
         <?php if ($isAdvUserFlag && !empty($visibleMenus['adv_only'])): ?>
-        <div class="mt-4 pt-3 border-t border-dark-600">
-            <p class="px-3 text-xs font-semibold text-dark-500 uppercase tracking-wider mb-2">ADV Only</p>
-            <div class="space-y-0.5">
+        <div class="sidebar-static-section">
+            <p class="sidebar-section-label">ADV Only</p>
+            <div>
                 <?php foreach ($visibleMenus['adv_only'] as $item): ?>
                 <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>
                 <?php endforeach; ?>
@@ -309,9 +529,9 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
         
         <!-- System Section - ADV Only -->
         <?php if ($isAdvUserFlag && !empty($visibleMenus['system'])): ?>
-        <div class="mt-4 pt-3 border-t border-dark-600">
-            <p class="px-3 text-xs font-semibold text-dark-500 uppercase tracking-wider mb-2">System</p>
-            <div class="space-y-0.5">
+        <div class="sidebar-static-section">
+            <p class="sidebar-section-label">System</p>
+            <div>
                 <?php foreach ($visibleMenus['system'] as $item): ?>
                 <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>
                 <?php endforeach; ?>
@@ -321,9 +541,9 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
         
         <!-- Admin Section - ADV Only -->
         <?php if ($isAdvUserFlag && !empty($visibleMenus['admin'])): ?>
-        <div class="mt-4 pt-3 border-t border-dark-600">
-            <p class="px-3 text-xs font-semibold text-dark-500 uppercase tracking-wider mb-2">Admin</p>
-            <div class="space-y-0.5">
+        <div class="sidebar-static-section">
+            <p class="sidebar-section-label">Admin</p>
+            <div>
                 <?php foreach ($visibleMenus['admin'] as $item): ?>
                 <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>
                 <?php endforeach; ?>

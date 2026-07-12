@@ -49,9 +49,9 @@ ob_start();
             <a href="bulk_upload.php" class="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center text-xs font-medium">
                 <i class="fas fa-file-upload mr-1.5"></i>Bulk Upload
             </a>
-            <button onclick="openCreateModal()" class="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center text-xs font-medium">
+            <a href="add.php" class="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center text-xs font-medium">
                 <i class="fas fa-plus mr-1.5"></i>Add Site
-            </button>
+            </a>
             <button onclick="exportSites()" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center text-xs font-medium">
                 <i class="fas fa-file-excel mr-1.5"></i>Export
             </button>

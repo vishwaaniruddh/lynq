@@ -1,14 +1,5 @@
 /* ADV CRM Custom Styles */
 
-/* Sidebar active state */
-.sidebar-link.active {
-    background-color: #3b82f6;
-    color: white;
-}
-
-.sidebar-link:hover:not(.active) {
-    background-color: #f1f5f9;
-}
 
 /* Modal backdrop */
 .modal-backdrop {
