@@ -32,7 +32,7 @@ class CreateDispatchesTables extends Migration {
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `dispatch_number` VARCHAR(50) NOT NULL,
             `from_company_id` INT NOT NULL,
-            `from_warehouse_id` INT NOT NULL,
+            `from_warehouse_id` INT,
             `to_company_id` INT,
             `to_user_id` INT,
             `to_warehouse_id` INT,

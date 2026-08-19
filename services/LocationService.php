@@ -1534,6 +1534,26 @@ class LocationService {
             $errors['status'] = ['Status must be active or inactive'];
         }
         
+        if (isset($data['to_emails']) && trim($data['to_emails']) !== '') {
+            $emails = array_filter(array_map('trim', explode(',', $data['to_emails'])));
+            foreach ($emails as $email) {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $errors['to_emails'] = ["Invalid email format: '$email'"];
+                    break;
+                }
+            }
+        }
+        
+        if (isset($data['cc_emails']) && trim($data['cc_emails']) !== '') {
+            $emails = array_filter(array_map('trim', explode(',', $data['cc_emails'])));
+            foreach ($emails as $email) {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $errors['cc_emails'] = ["Invalid email format: '$email'"];
+                    break;
+                }
+            }
+        }
+        
         return [
             'valid' => empty($errors),
             'errors' => $errors

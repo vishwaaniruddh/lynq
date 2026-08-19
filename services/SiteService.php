@@ -82,7 +82,7 @@ class SiteService {
             ]);
             
             // Return created site
-            $site = $this->siteRepository->findById($siteId);
+            $site = $this->formatSiteEmails($this->siteRepository->findById($siteId));
             
             return [
                 'success' => true,
@@ -163,7 +163,7 @@ class SiteService {
             ]);
             
             // Return updated site
-            $site = $this->siteRepository->findById($siteId);
+            $site = $this->formatSiteEmails($this->siteRepository->findById($siteId));
             
             return [
                 'success' => true,
@@ -186,7 +186,7 @@ class SiteService {
      * @return array|null Site record or null if not found
      */
     public function getSite(int $siteId): ?array {
-        return $this->siteRepository->findById($siteId);
+        return $this->formatSiteEmails($this->siteRepository->findById($siteId));
     }
     
     /**
@@ -240,7 +240,11 @@ class SiteService {
      * Requirements: 1.1
      */
     public function getSitesByCompany(int $companyId, array $filters = []): array {
-        return $this->siteRepository->findByCompany($companyId, $filters);
+        $result = $this->siteRepository->findByCompany($companyId, $filters);
+        if (!empty($result['data'])) {
+            $result['data'] = array_map([$this, 'formatSiteEmails'], $result['data']);
+        }
+        return $result;
     }
     
     /**
@@ -284,7 +288,8 @@ class SiteService {
      * @return array Array of site records
      */
     public function exportSites(int $companyId, array $filters = []): array {
-        return $this->siteRepository->findAllForExport($companyId, $filters);
+        $sites = $this->siteRepository->findAllForExport($companyId, $filters);
+        return array_map([$this, 'formatSiteEmails'], $sites);
     }
     
     /**
@@ -768,13 +773,22 @@ class SiteService {
                 'latitude' => $site['latitude'] ?? '',
                 'longitude' => $site['longitude'] ?? '',
                 'status' => $site['status'],
+                'router_serial_number' => $site['router_serial_number'] ?? '',
+                'router_ip' => $site['router_ip'] ?? '',
+                'network_ip' => $site['network_ip'] ?? '',
+                'site_ip' => $site['site_ip'] ?? '',
                 'created_at' => $site['created_at'],
                 'created_by' => $site['created_by']
             ];
         }, $sites);
         
         // Get headers
-        $headers = $this->bulkOperationService->getSiteExportHeaders();
+        $headers = [
+            'ID', 'Site Name', 'LHO', 'Bank Name', 'Customer Name',
+            'City', 'State', 'Country', 'Zone', 'Address',
+            'Latitude', 'Longitude', 'Status', 'Router Serial Number',
+            'Router IP', 'Network IP', 'Site IP', 'Created At', 'Created By'
+        ];
         
         // Column mapping for export
         $columnMapping = [
@@ -791,10 +805,30 @@ class SiteService {
             'latitude' => 'K',
             'longitude' => 'L',
             'status' => 'M',
-            'created_at' => 'N',
-            'created_by' => 'O'
+            'router_serial_number' => 'N',
+            'router_ip' => 'O',
+            'network_ip' => 'P',
+            'site_ip' => 'Q',
+            'created_at' => 'R',
+            'created_by' => 'S'
         ];
         
         return $this->bulkOperationService->generateExcelExport($exportData, $headers, $columnMapping, 'sites_export');
+    }
+    
+    /**
+     * Helper to format site records to include LHO emails in a structured email object.
+     */
+    private function formatSiteEmails(?array $site): ?array {
+        if (!$site) {
+            return null;
+        }
+        $site['email'] = [
+            'to' => $site['lho_to_emails'] ?? null,
+            'cc' => $site['lho_cc_emails'] ?? null
+        ];
+        unset($site['lho_to_emails']);
+        unset($site['lho_cc_emails']);
+        return $site;
     }
 }

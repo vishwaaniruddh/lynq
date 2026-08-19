@@ -19,7 +19,7 @@ class Dispatch extends BaseModel {
         'acknowledged_at', 'acknowledged_by', 'notes',
         'courier_id', 'pod_number', 'contact_person_name', 
         'contact_person_phone', 'lr_copy_path', 'pod_receipt_path',
-        'created_by'
+        'created_by', 'is_partial'
     ];
     
     // Status constants

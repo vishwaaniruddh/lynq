@@ -647,7 +647,7 @@ class MaterialRequestRepository extends BaseRepository {
         $validTransitions = [
             self::STATUS_REQUESTED => [self::STATUS_APPROVED, self::STATUS_REJECTED],
             self::STATUS_APPROVED => [self::STATUS_DISPATCHED],
-            self::STATUS_DISPATCHED => [self::STATUS_RECEIVED],
+            self::STATUS_DISPATCHED => [self::STATUS_RECEIVED, self::STATUS_APPROVED],
             self::STATUS_RECEIVED => [], // Terminal state
             self::STATUS_REJECTED => [] // Terminal state
         ];

@@ -60,19 +60,22 @@ try {
     
     $lockId = (int)$input['lock_id'];
     $notes = isset($input['notes']) ? trim($input['notes']) : null;
+    $siteId = isset($input['site_id']) && is_numeric($input['site_id']) ? (int)$input['site_id'] : null;
     
     // Complete configuration
     $configurationService = new ConfigurationService();
     $result = $configurationService->completeConfiguration(
         $lockId,
         $user['id'],
-        $notes
+        $notes,
+        $siteId
     );
     
     // Log API access
     $authMiddleware->logApiAccess($user['id'], '/api/configuration/configuration_complete', 'POST', [
         'lock_id' => $lockId,
-        'has_notes' => !empty($notes)
+        'has_notes' => !empty($notes),
+        'site_id' => $siteId
     ]);
     
     if ($result['success']) {

@@ -105,33 +105,25 @@ function getMenuIconColor($itemId) {
 }
 
 /**
- * Helper function to determine if a menu item is active
+ * Helper function to determine if a menu item is active (strictly exact match by URL path)
  */
-function isMenuItemActive($item, $currentPage) {
-    if (!isset($item['id']) || !$currentPage) {
+function isMenuItemActive($item) {
+    if (!isset($item['url']) || empty($item['url'])) {
         return false;
     }
     
-    $itemId = $item['id'];
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    // Extract path from the item URL (e.g. /sites/index.php)
+    $itemUrlPath = parse_url($item['url'], PHP_URL_PATH);
+    $normalizedItemPath = ltrim($itemUrlPath, './');
     
-    // 1. Exact match
-    if ($itemId === $currentPage) {
-        return true;
-    }
+    // Extract path from the request URI
+    $requestPath = parse_url($requestUri, PHP_URL_PATH);
+    $normalizedRequestPath = ltrim($requestPath, './');
     
-    // 2. Prefix match (e.g., page 'sites' matches menu item 'sites_list', 'sites_add', etc.)
-    if (strpos($itemId, $currentPage . '_') === 0) {
-        return true;
-    }
-    
-    // 3. Request URI path match
-    if (isset($item['url']) && !empty($item['url'])) {
-        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-        // Normalize URLs (remove leading slash, query string, and dots)
-        $itemUrlPath = parse_url($item['url'], PHP_URL_PATH);
-        $normalizedItemPath = ltrim($itemUrlPath, './');
-        
-        if (!empty($normalizedItemPath) && strpos($requestUri, $normalizedItemPath) !== false) {
+    if (!empty($normalizedItemPath) && !empty($normalizedRequestPath)) {
+        // Ensure exact page path match (e.g. sites/index.php matches sites/index.php, but not sites/add.php)
+        if (strpos($normalizedRequestPath, $normalizedItemPath) !== false) {
             return true;
         }
     }
@@ -140,7 +132,7 @@ function isMenuItemActive($item, $currentPage) {
 }
 
 /**
- * Check if any child item is active in a section
+ * Check if any child item is active in a section (for section auto-expand/highlight)
  * @param array $items Menu items to check
  * @param string $currentPage Current page ID
  * @return bool True if any child is active
@@ -153,9 +145,16 @@ function isAnyChildActive($items, $currentPage) {
                 return true;
             }
         } else {
-            // Regular item
-            if (isMenuItemActive($item, $currentPage)) {
+            // 1. Check if the URL is active exactly
+            if (isMenuItemActive($item)) {
                 return true;
+            }
+            
+            // 2. Check if the ID matches the current page ID or contains it (e.g. masters_companies contains companies)
+            if ($currentPage && isset($item['id'])) {
+                if ($item['id'] === $currentPage || strpos($item['id'], $currentPage) !== false) {
+                    return true;
+                }
             }
         }
     }
@@ -170,7 +169,7 @@ function isAnyChildActive($items, $currentPage) {
  * @return string HTML for the menu item
  */
 function renderMenuItem($item, $currentPage, $baseUrl) {
-    $isActive = isMenuItemActive($item, $currentPage);
+    $isActive = isMenuItemActive($item);
     $activeClass = $isActive ? 'active' : '';
     
     // Check for badge
@@ -307,7 +306,7 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
     /* ---- Menu Links ---- */
     #sidebar .sidebar-link {
         color: #a1a1aa !important;
-        font-size: 13px !important;
+        font-size: 0.8rem !important;
         font-weight: 400 !important;
         padding: 6px 10px !important;
         border-radius: 5px !important;
@@ -360,22 +359,22 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
 
     /* ---- Collapsible Section Headers (Category Labels) ---- */
     #sidebar .collapsible-toggle {
-        color: #52525b !important;
-        font-size: 10.5px !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.08em !important;
-        text-transform: uppercase !important;
-        padding: 6px 8px !important;
-        margin: 0 0 4px 0 !important;
-        border: none !important;
-        background: transparent !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        cursor: pointer !important;
-        width: 100% !important;
-        border-radius: 4px !important;
-        transition: all 0.15s ease !important;
+        color: #b3b3b3 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    /* text-transform: uppercase !important; */
+    padding: 6px 8px !important;
+    margin: 0 0 4px 0 !important;
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    border-radius: 4px !important;
+    transition: all 0.15s ease !important;
     }
     #sidebar .collapsible-toggle:hover {
         color: #a1a1aa !important;
@@ -410,7 +409,7 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
 
     /* ---- Non-collapsible section labels (ADV Only, System, Admin) ---- */
     #sidebar .sidebar-section-label {
-        color: #52525b !important;
+        color: #2196F3 !important;
         font-size: 10.5px !important;
         font-weight: 700 !important;
         letter-spacing: 0.08em !important;
@@ -459,7 +458,7 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
         <!-- Main Menu Section -->
         <?php if (!empty($visibleMenus['main'])): ?>
         <div class="sidebar-static-section" style="margin-top: 4px !important;">
-            <p class="sidebar-section-label">Main Menu</p>
+            <!-- <p class="sidebar-section-label">Main Menu</p> -->
             <div>
                 <?php foreach ($visibleMenus['main'] as $item): ?>
                 <?php echo renderMenuItem($item, $currentPage ?? '', $baseUrl); ?>

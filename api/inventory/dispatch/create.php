@@ -64,11 +64,21 @@ try {
     $authMiddleware->checkRateLimit();
     $user = $authMiddleware->requireAuth();
     
-    // Get JSON input
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Check if this is a multipart form or JSON request
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $isMultipart = strpos($contentType, 'multipart/form-data') !== false;
+    
+    if ($isMultipart) {
+        $input = $_POST;
+        if (isset($_POST['items'])) {
+            $input['items'] = json_decode($_POST['items'], true);
+        }
+    } else {
+        $input = json_decode(file_get_contents('php://input'), true);
+    }
     
     if (!$input) {
-        ApiResponse::validationError(['body' => 'Invalid JSON body']);
+        ApiResponse::validationError(['body' => 'Invalid request body']);
     }
     
     // Determine dispatch type: multi-directional (sender_type) or warehouse-based (from_warehouse_id)
@@ -194,8 +204,74 @@ try {
             $errors['destination'] = 'At least one destination (company, user, or warehouse) is required';
         }
         
+        // Validate mandatory contact & shipping fields
+        if (empty($input['contact_person_name'])) {
+            $errors['contact_person_name'] = 'Contact person name is required';
+        }
+        if (empty($input['contact_person_phone'])) {
+            $errors['contact_person_phone'] = 'Contact number is required';
+        }
+        if (empty($input['courier_id'])) {
+            $errors['courier_id'] = 'Courier selection is required';
+        }
+        if (empty($input['pod_number'])) {
+            $errors['pod_number'] = 'POD Number is required';
+        }
+        
+        // Handle file uploads if multipart
+        $lrCopyPath = null;
+        $podReceiptPath = null;
+        $uploadDir = __DIR__ . '/../../../uploads/dispatches/';
+        
+        if ($isMultipart) {
+            if (!isset($_FILES['lr_copy']) || $_FILES['lr_copy']['error'] !== UPLOAD_ERR_OK) {
+                $errors['lr_copy'] = 'LR Copy file is required';
+            }
+            if (!isset($_FILES['pod_receipt']) || $_FILES['pod_receipt']['error'] !== UPLOAD_ERR_OK) {
+                $errors['pod_receipt'] = 'POD Receipt file is required';
+            }
+        } else {
+            if (empty($input['lr_copy_path'])) {
+                $errors['lr_copy'] = 'LR Copy path/file is required';
+            } else {
+                $lrCopyPath = $input['lr_copy_path'];
+            }
+            if (empty($input['pod_receipt_path'])) {
+                $errors['pod_receipt'] = 'POD Receipt path/file is required';
+            } else {
+                $podReceiptPath = $input['pod_receipt_path'];
+            }
+        }
+        
         if (!empty($errors)) {
             ApiResponse::validationError($errors);
+        }
+        
+        // If we reach here and it is multipart, perform the file uploads
+        if ($isMultipart) {
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // Upload LR Copy
+            $lrFile = $_FILES['lr_copy'];
+            $lrExt = pathinfo($lrFile['name'], PATHINFO_EXTENSION);
+            $lrFilename = 'lr_' . uniqid() . '_' . time() . '.' . $lrExt;
+            if (move_uploaded_file($lrFile['tmp_name'], $uploadDir . $lrFilename)) {
+                $lrCopyPath = 'uploads/dispatches/' . $lrFilename;
+            } else {
+                ApiResponse::serverError('Failed to upload LR Copy file');
+            }
+            
+            // Upload POD Receipt
+            $podFile = $_FILES['pod_receipt'];
+            $podExt = pathinfo($podFile['name'], PATHINFO_EXTENSION);
+            $podFilename = 'pod_' . uniqid() . '_' . time() . '.' . $podExt;
+            if (move_uploaded_file($podFile['tmp_name'], $uploadDir . $podFilename)) {
+                $podReceiptPath = 'uploads/dispatches/' . $podFilename;
+            } else {
+                ApiResponse::serverError('Failed to upload POD Receipt file');
+            }
         }
         
         $fromWarehouseId = (int)$input['from_warehouse_id'];
@@ -220,7 +296,7 @@ try {
             ApiResponse::validationError(['from_warehouse_id' => 'Cannot dispatch from inactive warehouse']);
         }
         
-        // Prepare dispatch data with new shipping fields
+        // Prepare dispatch data with new shipping fields and is_partial status
         $dispatchData = [
             'from_warehouse_id' => $fromWarehouseId,
             'to_company_id' => !empty($input['to_company_id']) ? (int)$input['to_company_id'] : null,
@@ -228,12 +304,15 @@ try {
             'to_warehouse_id' => !empty($input['to_warehouse_id']) ? (int)$input['to_warehouse_id'] : null,
             'site_id' => !empty($input['site_id']) ? (int)$input['site_id'] : null,
             'material_request_id' => !empty($input['material_request_id']) ? (int)$input['material_request_id'] : null,
+            'is_partial' => !empty($input['is_partial']) ? (int)$input['is_partial'] : 0,
             'dispatch_date' => $input['dispatch_date'] ?? date('Y-m-d'),
             'courier_id' => !empty($input['courier_id']) ? (int)$input['courier_id'] : null,
             'pod_number' => !empty($input['pod_number']) ? trim($input['pod_number']) : null,
             'contact_person_name' => !empty($input['contact_person_name']) ? trim($input['contact_person_name']) : null,
             'contact_person_phone' => !empty($input['contact_person_phone']) ? trim($input['contact_person_phone']) : null,
-            'notes' => $input['notes'] ?? null
+            'notes' => $input['notes'] ?? null,
+            'lr_copy_path' => $lrCopyPath,
+            'pod_receipt_path' => $podReceiptPath
         ];
         
         // Validate items - support both single asset_id and array of asset_ids

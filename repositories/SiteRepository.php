@@ -27,7 +27,53 @@ class SiteRepository extends BaseRepository {
      * Requirements: 1.1
      */
     public function findById(int $id): ?array {
-        $sql = "SELECT * FROM `{$this->table}` WHERE `id` = ? AND `status` != 'deleted'";
+        $sql = "SELECT s.*, 
+                       l.to_emails as lho_to_emails,
+                       l.cc_emails as lho_cc_emails,
+                       COALESCE(r_direct.router_serial_number, r_dispatch.router_serial_number) as router_serial_number,
+                       COALESCE(r_direct.router_ip, r_dispatch.router_ip) as router_ip,
+                       COALESCE(r_direct.network_ip, r_dispatch.network_ip) as network_ip,
+                       COALESCE(r_direct.site_ip, r_dispatch.site_ip) as site_ip,
+                       COALESCE(r_direct.subnet_mask, r_dispatch.subnet_mask) as subnet_mask
+                FROM `{$this->table}` s
+                LEFT JOIN `lhos` l ON s.lho = l.lho_name
+                LEFT JOIN (
+                    SELECT 
+                        rib.site_id,
+                        rib.router_serial_number,
+                        ip.router_ip,
+                        ip.network_ip,
+                        ip.site_ip,
+                        ip.subnet_mask
+                    FROM router_ip_bindings rib
+                    JOIN ip_master ip ON rib.ip_master_id = ip.id
+                    WHERE rib.status = 'active' AND rib.site_id IS NOT NULL
+                ) r_direct ON s.id = r_direct.site_id
+                LEFT JOIN (
+                    SELECT 
+                        latest_r.site_id,
+                        a.serial_number as router_serial_number,
+                        ip.router_ip,
+                        ip.network_ip,
+                        ip.site_ip,
+                        ip.subnet_mask
+                    FROM (
+                        SELECT MAX(di_inner.id) as max_di_id, d_inner.site_id
+                        FROM dispatches d_inner
+                        JOIN dispatch_items di_inner ON d_inner.id = di_inner.dispatch_id
+                        JOIN assets a_inner ON di_inner.asset_id = a_inner.id
+                        JOIN products p_inner ON a_inner.product_id = p_inner.id
+                        JOIN product_categories pc_inner ON p_inner.category_id = pc_inner.id
+                        WHERE pc_inner.name NOT LIKE '%sim%' AND p_inner.is_serializable = 1 AND d_inner.status != 'cancelled'
+                        GROUP BY d_inner.site_id
+                    ) latest_r
+                    JOIN dispatch_items di ON latest_r.max_di_id = di.id
+                    JOIN dispatches d ON di.dispatch_id = d.id
+                    JOIN assets a ON di.asset_id = a.id
+                    LEFT JOIN router_ip_bindings rib ON a.serial_number = rib.router_serial_number AND rib.status = 'active'
+                    LEFT JOIN ip_master ip ON rib.ip_master_id = ip.id
+                ) r_dispatch ON s.id = r_dispatch.site_id
+                WHERE s.`id` = ? AND s.`status` != 'deleted'";
         $params = [$id];
         $types = 'i';
         
@@ -37,7 +83,7 @@ class SiteRepository extends BaseRepository {
                 $this->currentUserId, 
                 $this->companyIdColumn
             );
-            $sql .= " AND " . $filter['clause'];
+            $sql .= " AND s." . $filter['clause'];
             $params = array_merge($params, $filter['params']);
             $types .= $filter['types'];
         }
@@ -95,6 +141,14 @@ class SiteRepository extends BaseRepository {
             $types .= 'sss';
         }
         
+        // Site name filter
+        if (!empty($filters['site_name'])) {
+            $whereClause[] = "s.`site_name` LIKE ?";
+            $searchTerm = '%' . $filters['site_name'] . '%';
+            $params[] = $searchTerm;
+            $types .= 's';
+        }
+        
         // Delegation filter
         if (!empty($filters['delegation'])) {
             if ($filters['delegation'] === 'delegated') {
@@ -134,6 +188,8 @@ class SiteRepository extends BaseRepository {
         // Base JOIN clause for all queries
         $joinSQL = " LEFT JOIN `site_delegations` sd ON s.id = sd.site_id AND sd.status IN ('pending', 'accepted')
                     LEFT JOIN `companies` c ON sd.contractor_id = c.id
+                    LEFT JOIN `users` u_del ON sd.delegated_by = u_del.id
+                    LEFT JOIN `users` u_resp ON sd.responded_by = u_resp.id
                     LEFT JOIN `feasibility_checks` fc ON s.id = fc.site_id
                     LEFT JOIN `installations` inst ON s.id = inst.site_id
                     LEFT JOIN `material_requests` mr ON s.id = mr.site_id
@@ -144,20 +200,70 @@ class SiteRepository extends BaseRepository {
         $countResult = $this->db->getResults($countSQL, $params, $types);
         $total = (int)($countResult[0]['total'] ?? 0);
         
-        // Get paginated data with delegation status and feasibility status
+        // Get paginated data with delegation status, feasibility status, and mapped router details
         $dataSQL = "SELECT s.*, 
+                    l.to_emails as lho_to_emails,
+                    l.cc_emails as lho_cc_emails,
                     sd.id as delegation_id,
                     sd.status as delegation_status,
                     sd.contractor_id,
                     c.name as contractor_name,
                     sd.delegated_at,
+                    sd.delegated_by,
+                    u_del.username as delegated_by_username,
+                    sd.rejection_notes,
+                    sd.responded_by,
+                    u_resp.username as responded_by_username,
+                    sd.responded_at,
                     fc.id as feasibility_check_id,
                     fc.approval_status as feasibility_approval_status,
                     ea.feasibility_status,
                     inst.id as installation_id,
-                    inst.status as installation_status
+                    inst.status as installation_status,
+                    COALESCE(r_direct.router_serial_number, r_dispatch.router_serial_number) as router_serial_number,
+                    COALESCE(r_direct.router_ip, r_dispatch.router_ip) as router_ip,
+                    COALESCE(r_direct.network_ip, r_dispatch.network_ip) as network_ip,
+                    COALESCE(r_direct.site_ip, r_dispatch.site_ip) as site_ip,
+                    COALESCE(r_direct.subnet_mask, r_dispatch.subnet_mask) as subnet_mask
                     FROM `{$this->table}` s" .
                    $joinSQL .
+                   " LEFT JOIN `lhos` l ON s.lho = l.lho_name " .
+                   " LEFT JOIN (
+                        SELECT 
+                            rib.site_id,
+                            rib.router_serial_number,
+                            ip.router_ip,
+                            ip.network_ip,
+                            ip.site_ip,
+                            ip.subnet_mask
+                        FROM router_ip_bindings rib
+                        JOIN ip_master ip ON rib.ip_master_id = ip.id
+                        WHERE rib.status = 'active' AND rib.site_id IS NOT NULL
+                   ) r_direct ON s.id = r_direct.site_id
+                   LEFT JOIN (
+                        SELECT 
+                            latest_r.site_id,
+                            a.serial_number as router_serial_number,
+                            ip.router_ip,
+                            ip.network_ip,
+                            ip.site_ip,
+                            ip.subnet_mask
+                        FROM (
+                            SELECT MAX(di_inner.id) as max_di_id, d_inner.site_id
+                            FROM dispatches d_inner
+                            JOIN dispatch_items di_inner ON d_inner.id = di_inner.dispatch_id
+                            JOIN assets a_inner ON di_inner.asset_id = a_inner.id
+                            JOIN products p_inner ON a_inner.product_id = p_inner.id
+                            JOIN product_categories pc_inner ON p_inner.category_id = pc_inner.id
+                            WHERE pc_inner.name NOT LIKE '%sim%' AND p_inner.is_serializable = 1 AND d_inner.status != 'cancelled'
+                            GROUP BY d_inner.site_id
+                        ) latest_r
+                        JOIN dispatch_items di ON latest_r.max_di_id = di.id
+                        JOIN dispatches d ON di.dispatch_id = d.id
+                        JOIN assets a ON di.asset_id = a.id
+                        LEFT JOIN router_ip_bindings rib ON a.serial_number = rib.router_serial_number AND rib.status = 'active'
+                        LEFT JOIN ip_master ip ON rib.ip_master_id = ip.id
+                   ) r_dispatch ON s.id = r_dispatch.site_id " .
                    $whereSQL .
                    " GROUP BY s.id ORDER BY s.`$orderBy` $orderDir LIMIT ? OFFSET ?";
         $dataParams = array_merge($params, [$limit, $offset]);
@@ -510,7 +616,52 @@ class SiteRepository extends BaseRepository {
         }
         
         $whereSQL = ' WHERE ' . implode(' AND ', $whereClause);
-        $sql = "SELECT * FROM `{$this->table}`" . $whereSQL . " ORDER BY `site_name` ASC";
+        $sql = "SELECT s.*,
+                       l.to_emails as lho_to_emails,
+                       l.cc_emails as lho_cc_emails,
+                       COALESCE(r_direct.router_serial_number, r_dispatch.router_serial_number) as router_serial_number,
+                       COALESCE(r_direct.router_ip, r_dispatch.router_ip) as router_ip,
+                       COALESCE(r_direct.network_ip, r_dispatch.network_ip) as network_ip,
+                       COALESCE(r_direct.site_ip, r_dispatch.site_ip) as site_ip,
+                       COALESCE(r_direct.subnet_mask, r_dispatch.subnet_mask) as subnet_mask
+                FROM `{$this->table}` s
+                LEFT JOIN `lhos` l ON s.lho = l.lho_name
+                LEFT JOIN (
+                    SELECT 
+                        rib.site_id,
+                        rib.router_serial_number,
+                        ip.router_ip,
+                        ip.network_ip,
+                        ip.site_ip,
+                        ip.subnet_mask
+                    FROM router_ip_bindings rib
+                    JOIN ip_master ip ON rib.ip_master_id = ip.id
+                    WHERE rib.status = 'active' AND rib.site_id IS NOT NULL
+                ) r_direct ON s.id = r_direct.site_id
+                LEFT JOIN (
+                    SELECT 
+                        latest_r.site_id,
+                        a.serial_number as router_serial_number,
+                        ip.router_ip,
+                        ip.network_ip,
+                        ip.site_ip,
+                        ip.subnet_mask
+                    FROM (
+                        SELECT MAX(di_inner.id) as max_di_id, d_inner.site_id
+                        FROM dispatches d_inner
+                        JOIN dispatch_items di_inner ON d_inner.id = di_inner.dispatch_id
+                        JOIN assets a_inner ON di_inner.asset_id = a_inner.id
+                        JOIN products p_inner ON a_inner.product_id = p_inner.id
+                        JOIN product_categories pc_inner ON p_inner.category_id = pc_inner.id
+                        WHERE pc_inner.name NOT LIKE '%sim%' AND p_inner.is_serializable = 1 AND d_inner.status != 'cancelled'
+                        GROUP BY d_inner.site_id
+                    ) latest_r
+                    JOIN dispatch_items di ON latest_r.max_di_id = di.id
+                    JOIN dispatches d ON di.dispatch_id = d.id
+                    JOIN assets a ON di.asset_id = a.id
+                    LEFT JOIN router_ip_bindings rib ON a.serial_number = rib.router_serial_number AND rib.status = 'active'
+                    LEFT JOIN ip_master ip ON rib.ip_master_id = ip.id
+                ) r_dispatch ON s.id = r_dispatch.site_id" . $whereSQL . " ORDER BY s.`site_name` ASC";
         
         return $this->db->getResults($sql, $params, $types);
     }

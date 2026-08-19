@@ -39,6 +39,76 @@ $breadcrumbs = [
 ob_start();
 ?>
 
+<!-- jQuery & Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+/* Select2 overrides to match app UI */
+.select2-container--default .select2-selection--single {
+    border-color: #e2e8f0 !important;
+    height: 52px !important;
+    border-radius: 0.5rem !important;
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 50px !important;
+    right: 10px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #1f2937 !important;
+    padding-left: 0 !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    line-height: normal !important;
+}
+.select2-container--default .select2-selection--single:focus,
+.select2-container--default.select2-container--focus .select2-selection--single {
+    outline: none !important;
+    border-color: var(--color-primary, #6366f1) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+}
+.select2-dropdown {
+    border-color: #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05) !important;
+    overflow: hidden !important;
+    background-color: #ffffff !important;
+    z-index: 9999 !important;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+    border-color: #e2e8f0 !important;
+    border-radius: 0.375rem !important;
+    padding: 8px 12px !important;
+    font-size: 0.875rem !important;
+    outline: none !important;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field:focus {
+    border-color: var(--color-primary, #6366f1) !important;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.2) !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--color-primary, #6366f1) !important;
+    color: #ffffff !important;
+}
+.select2-container--default .select2-results__option {
+    padding: 10px 14px !important;
+    font-size: 0.875rem !important;
+}
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: #eef2ff !important;
+    color: #4338ca !important;
+}
+.select2-container { width: 100% !important; }
+.router-option-serial { font-weight: 600; font-family: monospace; font-size: 0.9rem; color: #1f2937; }
+.router-option-meta { font-size: 0.75rem; color: #6b7280; margin-top: 1px; }
+</style>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Configuration Panel -->
     <div class="lg:col-span-2">
@@ -57,10 +127,23 @@ ob_start();
                 
                 <div class="mb-4">
                     <label for="router-select" class="block text-sm font-medium text-gray-700 mb-2">Available Routers</label>
-                    <select id="router-select" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-lg">
-                        <option value="">-- Select a router by serial number --</option>
+                    <div id="router-loading" class="flex items-center gap-2 py-3 text-sm text-gray-400">
+                        <i class="fas fa-spinner fa-spin"></i> Loading available routers...
+                    </div>
+                    <select id="router-select" class="w-full" style="display:none">
+                        <option value=""></option>
                     </select>
                     <p id="router-error" class="mt-1 text-sm text-red-500 hidden"></p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="ip-select" class="block text-sm font-medium text-gray-700 mb-2">Assign IP Address (Optional)</label>
+                    <div id="ip-loading" class="flex items-center gap-2 py-3 text-sm text-gray-400">
+                        <i class="fas fa-spinner fa-spin"></i> Loading available IP combinations...
+                    </div>
+                    <select id="ip-select" class="w-full" style="display:none">
+                        <option value="">-- Auto-assign next available IP (Recommended) --</option>
+                    </select>
                 </div>
                 
                 <div id="router-info" class="hidden p-4 bg-gray-50 rounded-lg mb-4">
@@ -107,6 +190,16 @@ ob_start();
                             <p id="assigned-subnet-mask" class="font-mono text-lg font-semibold text-gray-800">-</p>
                         </div>
                     </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="site-select" class="block text-sm font-medium text-gray-700 mb-2">Map to Site (Optional)</label>
+                    <div id="site-loading" class="flex items-center gap-2 py-3 text-sm text-gray-400">
+                        <i class="fas fa-spinner fa-spin"></i> Loading active sites...
+                    </div>
+                    <select id="site-select" class="w-full" style="display:none">
+                        <option value="">-- Do not map to a site (Configure only) --</option>
+                    </select>
                 </div>
                 
                 <div class="mb-4">
@@ -220,6 +313,8 @@ ob_start();
 // State management
 const state = {
     routers: [],
+    availableIPs: [],
+    sites: [],
     selectedRouter: null,
     currentSession: null,
     lockId: null,
@@ -234,14 +329,17 @@ const API_URL = '../api/configuration';
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadAvailableRouters();
+    loadAvailableIPs();
+    loadActiveSites();
     loadQuickStats();
     setupEventListeners();
 });
 
 // Setup event listeners
 function setupEventListeners() {
-    document.getElementById('router-select').addEventListener('change', function(e) {
-        const serialNumber = e.target.value;
+    // Select2 change event
+    $('#router-select').on('change', function() {
+        const serialNumber = $(this).val();
         if (serialNumber) {
             state.selectedRouter = state.routers.find(r => r.serial_number === serialNumber);
             showRouterInfo();
@@ -275,22 +373,85 @@ async function loadAvailableRouters() {
     }
 }
 
-// Populate router dropdown
+// Populate router dropdown with Select2
 function populateRouterDropdown() {
     const select = document.getElementById('router-select');
-    select.innerHTML = '<option value="">-- Select a router by serial number --</option>';
+    const loadingEl = document.getElementById('router-loading');
+    
+    // Hide loading
+    if (loadingEl) loadingEl.style.display = 'none';
+    select.style.display = '';
     
     if (state.routers.length === 0) {
-        select.innerHTML += '<option value="" disabled>No routers available for configuration</option>';
+        select.innerHTML = '<option value="">No routers available for configuration</option>';
+        // Init Select2 even when empty
+        $('#router-select').select2({
+            placeholder: 'No routers available',
+            allowClear: false,
+            minimumResultsForSearch: 0
+        });
+        document.getElementById('start-config-btn').disabled = true;
         return;
     }
     
+    // Build options
+    select.innerHTML = '<option value=""></option>';
     state.routers.forEach(router => {
         const option = document.createElement('option');
         option.value = router.serial_number;
-        option.textContent = `${router.serial_number}${router.product_name ? ' - ' + router.product_name : ''}`;
+        option.textContent = router.serial_number;
+        option.dataset.productName = router.product_name || '';
+        option.dataset.warehouseName = router.warehouse_name || '';
         select.appendChild(option);
     });
+    
+    // Format option with rich template
+    function formatRouter(router) {
+        if (!router.id) return router.text;
+        const opt = state.routers.find(r => r.serial_number === router.id);
+        if (!opt) return router.text;
+        return $(`
+            <div class="router-option">
+                <div class="router-option-serial"><i class="fas fa-wifi mr-1.5 text-primary opacity-70"></i>${escapeHtml(opt.serial_number)}</div>
+                <div class="router-option-meta">
+                    ${opt.product_name ? '<i class="fas fa-box mr-1"></i>' + escapeHtml(opt.product_name) : ''}
+                    ${opt.warehouse_name ? ' &nbsp;·&nbsp; <i class="fas fa-warehouse mr-1"></i>' + escapeHtml(opt.warehouse_name) : ''}
+                </div>
+            </div>
+        `);
+    }
+    
+    function formatRouterSelection(router) {
+        if (!router.id) return router.text || 'Search by serial number...';
+        const opt = state.routers.find(r => r.serial_number === router.id);
+        if (!opt) return router.text;
+        let label = escapeHtml(opt.serial_number);
+        if (opt.product_name) label += ' — ' + escapeHtml(opt.product_name);
+        return label;
+    }
+    
+    // Initialize Select2
+    $('#router-select').select2({
+        placeholder: 'Search by serial number...',
+        allowClear: true,
+        minimumResultsForSearch: 0,
+        templateResult: formatRouter,
+        templateSelection: formatRouterSelection,
+        language: {
+            noResults: function() { return 'No routers found'; },
+            searching: function() { return 'Searching...'; }
+        }
+    });
+    
+    // If URL has ?router=<serial>, pre-select it
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSerial = urlParams.get('router');
+    if (preSerial) {
+        const found = state.routers.find(r => r.serial_number === preSerial);
+        if (found) {
+            $('#router-select').val(preSerial).trigger('change');
+        }
+    }
 }
 
 // Show router info
@@ -349,12 +510,14 @@ async function startConfiguration() {
     startBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Starting...';
     
     try {
+        const ipMasterId = document.getElementById('ip-select').value;
         const response = await fetch(`${API_URL}/configuration_start.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
-                router_serial_number: state.selectedRouter.serial_number
+                router_serial_number: state.selectedRouter.serial_number,
+                ip_master_id: ipMasterId ? parseInt(ipMasterId) : null
             })
         });
         
@@ -419,6 +582,11 @@ function showStep2(sessionData) {
     
     // Disable router selection
     document.getElementById('router-select').disabled = true;
+    $('#router-select').prop('disabled', true).trigger('change');
+    
+    // Disable IP selection
+    document.getElementById('ip-select').disabled = true;
+    $('#ip-select').prop('disabled', true).trigger('change');
 }
 
 // Start countdown timer
@@ -485,6 +653,7 @@ async function completeConfiguration() {
     
     try {
         const notes = document.getElementById('config-notes').value.trim();
+        const siteId = document.getElementById('site-select').value;
         
         const response = await fetch(`${API_URL}/configuration_complete.php`, {
             method: 'POST',
@@ -492,7 +661,8 @@ async function completeConfiguration() {
             credentials: 'include',
             body: JSON.stringify({
                 lock_id: state.lockId,
-                notes: notes || null
+                notes: notes || null,
+                site_id: siteId ? parseInt(siteId) : null
             })
         });
         
@@ -592,8 +762,24 @@ function resetConfiguration() {
     document.getElementById('timer-warning').classList.add('hidden');
     
     // Reset form
-    document.getElementById('router-select').value = '';
     document.getElementById('router-select').disabled = false;
+    $('#router-select').prop('disabled', false);
+    if ($('#router-select').data('select2')) {
+        $('#router-select').val('').trigger('change');
+    }
+    
+    document.getElementById('ip-select').disabled = false;
+    $('#ip-select').prop('disabled', false);
+    if ($('#ip-select').data('select2')) {
+        $('#ip-select').val('').trigger('change');
+    }
+    
+    document.getElementById('site-select').disabled = false;
+    $('#site-select').prop('disabled', false);
+    if ($('#site-select').data('select2')) {
+        $('#site-select').val('').trigger('change');
+    }
+    
     document.getElementById('config-notes').value = '';
     document.getElementById('router-info').classList.add('hidden');
     
@@ -618,8 +804,10 @@ function resetConfiguration() {
     document.getElementById('timer-progress').classList.remove('bg-yellow-500', 'bg-red-500');
     document.getElementById('timer-progress').classList.add('bg-primary');
     
-    // Reload routers
+    // Reload routers, IPs, and sites
     loadAvailableRouters();
+    loadAvailableIPs();
+    loadActiveSites();
 }
 
 // Utility functions
@@ -666,6 +854,112 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Load available IPs
+async function loadAvailableIPs() {
+    try {
+        const response = await fetch('../api/configuration/ip_master.php?status=available&limit=200', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+            state.availableIPs = data.data.ip_masters || [];
+            populateIPDropdown();
+        } else {
+            const ipLoading = document.getElementById('ip-loading');
+            if (ipLoading) ipLoading.textContent = 'Failed to load IPs';
+        }
+    } catch (error) {
+        console.error('Error loading IPs:', error);
+        const ipLoading = document.getElementById('ip-loading');
+        if (ipLoading) ipLoading.textContent = 'Failed to load IPs';
+    }
+}
+
+// Populate IP Dropdown
+function populateIPDropdown() {
+    const select = document.getElementById('ip-select');
+    const loadingEl = document.getElementById('ip-loading');
+    
+    if (loadingEl) loadingEl.style.display = 'none';
+    select.style.display = '';
+    
+    select.innerHTML = '<option value="">-- Auto-assign next available IP (Recommended) --</option>';
+    state.availableIPs.forEach(ip => {
+        const option = document.createElement('option');
+        option.value = ip.id;
+        option.textContent = `Network: ${ip.network_ip} | Router: ${ip.router_ip} | ATM: ${ip.site_ip}`;
+        select.appendChild(option);
+    });
+    
+    function formatIP(ip) {
+        if (!ip.id) return ip.text;
+        const opt = state.availableIPs.find(i => i.id == ip.id);
+        if (!opt) return ip.text;
+        return $(`
+            <div class="ip-option">
+                <div class="font-mono text-xs font-semibold text-gray-800"><i class="fas fa-network-wired mr-1.5 text-primary opacity-70"></i>Network: ${opt.network_ip}</div>
+                <div class="text-[10px] text-gray-500 mt-0.5">
+                    Router IP: ${opt.router_ip} &nbsp;·&nbsp; ATM IP: ${opt.site_ip} &nbsp;·&nbsp; Subnet: ${opt.subnet_mask}
+                </div>
+            </div>
+        `);
+    }
+    
+    $('#ip-select').select2({
+        placeholder: 'Select IP Address (Optional)',
+        allowClear: true,
+        templateResult: formatIP,
+        templateSelection: function(ip) {
+            if (!ip.id) return ip.text;
+            const opt = state.availableIPs.find(i => i.id == ip.id);
+            return opt ? `Network: ${opt.network_ip} (Router: ${opt.router_ip})` : ip.text;
+        }
+    });
+}
+
+// Load active sites
+async function loadActiveSites() {
+    try {
+        const response = await fetch('../api/sites/fetch_sites.php', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+            state.sites = data.data.sites || [];
+            populateSiteDropdown();
+        } else {
+            const siteLoading = document.getElementById('site-loading');
+            if (siteLoading) siteLoading.textContent = 'Failed to load sites';
+        }
+    } catch (error) {
+        console.error('Error loading sites:', error);
+        const siteLoading = document.getElementById('site-loading');
+        if (siteLoading) siteLoading.textContent = 'Failed to load sites';
+    }
+}
+
+// Populate Site Dropdown
+function populateSiteDropdown() {
+    const select = document.getElementById('site-select');
+    const loadingEl = document.getElementById('site-loading');
+    
+    if (loadingEl) loadingEl.style.display = 'none';
+    select.style.display = '';
+    
+    select.innerHTML = '<option value="">-- Do not map to a site (Configure only) --</option>';
+    state.sites.forEach(site => {
+        const option = document.createElement('option');
+        option.value = site.id;
+        option.textContent = site.site_name;
+        select.appendChild(option);
+    });
+    
+    $('#site-select').select2({
+        placeholder: 'Search site to map...',
+        allowClear: true
+    });
 }
 </script>
 

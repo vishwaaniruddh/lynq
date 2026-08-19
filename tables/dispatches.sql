@@ -11,7 +11,7 @@ CREATE TABLE `dispatches` (
   `sender_type` enum('warehouse','company','user') DEFAULT 'warehouse',
   `sender_id` int(11) DEFAULT NULL,
   `from_company_id` int(11) NOT NULL,
-  `from_warehouse_id` int(11) NOT NULL,
+  `from_warehouse_id` int(11) DEFAULT NULL,
   `to_company_id` int(11) DEFAULT NULL,
   `to_user_id` int(11) DEFAULT NULL,
   `to_warehouse_id` int(11) DEFAULT NULL,

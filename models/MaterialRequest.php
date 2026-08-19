@@ -60,7 +60,7 @@ class MaterialRequest extends BaseModel {
         return [
             self::STATUS_REQUESTED => [self::STATUS_APPROVED],
             self::STATUS_APPROVED => [self::STATUS_DISPATCHED],
-            self::STATUS_DISPATCHED => [self::STATUS_RECEIVED],
+            self::STATUS_DISPATCHED => [self::STATUS_RECEIVED, self::STATUS_APPROVED],
             self::STATUS_RECEIVED => [] // Terminal state
         ];
     }

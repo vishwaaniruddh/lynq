@@ -1514,6 +1514,20 @@ class LocationRepository extends BaseRepository {
             $types .= 'i';
         }
         
+        if (isset($data['to_emails'])) {
+            $fields[] = 'to_emails';
+            $placeholders[] = '?';
+            $values[] = $data['to_emails'];
+            $types .= 's';
+        }
+        
+        if (isset($data['cc_emails'])) {
+            $fields[] = 'cc_emails';
+            $placeholders[] = '?';
+            $values[] = $data['cc_emails'];
+            $types .= 's';
+        }
+        
         $sql = "INSERT INTO `lhos` (`" . implode('`, `', $fields) . "`) VALUES (" . implode(', ', $placeholders) . ")";
         
         $stmt = $this->db->executeQuery($sql, $values, $types);
@@ -1560,6 +1574,18 @@ class LocationRepository extends BaseRepository {
             $updates[] = "`updated_by` = ?";
             $params[] = $data['updated_by'];
             $types .= 'i';
+        }
+        
+        if (array_key_exists('to_emails', $data)) {
+            $updates[] = "`to_emails` = ?";
+            $params[] = $data['to_emails'];
+            $types .= 's';
+        }
+        
+        if (array_key_exists('cc_emails', $data)) {
+            $updates[] = "`cc_emails` = ?";
+            $params[] = $data['cc_emails'];
+            $types .= 's';
         }
         
         if (empty($updates)) {

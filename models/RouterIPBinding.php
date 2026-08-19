@@ -16,7 +16,7 @@ class RouterIPBinding extends BaseModel {
     protected $fillable = [
         'router_serial_number', 'ip_master_id', 'configured_by',
         'configured_at', 'notes', 'status',
-        'unbound_by', 'unbound_at', 'unbind_reason'
+        'unbound_by', 'unbound_at', 'unbind_reason', 'site_id'
     ];
     
     // Status constants

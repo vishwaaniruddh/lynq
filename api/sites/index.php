@@ -66,6 +66,7 @@ try {
  */
 function handleGetRequest($siteService, $authMiddleware, $user) {
     $search = isset($_GET['search']) ? trim($_GET['search']) : null;
+    $siteName = isset($_GET['site_name']) ? trim($_GET['site_name']) : null;
     $status = isset($_GET['status']) ? $_GET['status'] : null;
     $lho = isset($_GET['lho']) ? trim($_GET['lho']) : null;
     $delegation = isset($_GET['delegation']) ? $_GET['delegation'] : null;
@@ -86,6 +87,10 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
     
     if ($search !== null && $search !== '') {
         $filters['search'] = $search;
+    }
+    
+    if ($siteName !== null && $siteName !== '') {
+        $filters['site_name'] = $siteName;
     }
     
     if ($status !== null && $status !== '') {

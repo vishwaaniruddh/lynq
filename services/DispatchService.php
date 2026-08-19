@@ -176,6 +176,9 @@ class DispatchService {
             if (!empty($dispatchData['material_request_id'])) {
                 $dispatchCreateData['material_request_id'] = $dispatchData['material_request_id'];
             }
+            if (isset($dispatchData['is_partial'])) {
+                $dispatchCreateData['is_partial'] = $dispatchData['is_partial'];
+            }
             
             $dispatch = $this->dispatchRepository->create($dispatchCreateData);
             
@@ -272,6 +275,45 @@ class DispatchService {
                     $recipientId
                 );
             }
+            // If associated with a material request, update quantity_dispatched in material_request_items
+            if (!empty($dispatchData['material_request_id'])) {
+                $mrId = (int)$dispatchData['material_request_id'];
+                
+                // Group dispatched items by product_id
+                $dispatchedQtys = [];
+                foreach ($createdItems as $cItem) {
+                    $pId = (int)$cItem['product_id'];
+                    $qty = (int)$cItem['quantity'];
+                    if (!isset($dispatchedQtys[$pId])) {
+                        $dispatchedQtys[$pId] = 0;
+                    }
+                    $dispatchedQtys[$pId] += $qty;
+                }
+                
+                // Update quantity_dispatched for each product
+                foreach ($dispatchedQtys as $pId => $qty) {
+                    $sql = "UPDATE material_request_items 
+                            SET quantity_dispatched = quantity_dispatched + ? 
+                            WHERE material_request_id = ? AND product_id = ?";
+                    $this->db->executeQuery($sql, [$qty, $mrId, $pId], 'iii');
+                }
+                
+                // Check if all requested items are fully dispatched
+                $sql = "SELECT SUM(quantity_requested - quantity_dispatched) as remaining 
+                        FROM material_request_items 
+                        WHERE material_request_id = ?";
+                $res = $this->db->getResults($sql, [$mrId], 'i');
+                $remaining = isset($res[0]['remaining']) ? (int)$res[0]['remaining'] : 0;
+                
+                // If no remaining items to dispatch, set material request status to dispatched
+                if ($remaining <= 0) {
+                    $now = date('Y-m-d H:i:s');
+                    $sql = "UPDATE material_requests 
+                            SET status = 'dispatched', dispatched_at = ?, updated_at = ? 
+                            WHERE id = ?";
+                    $this->db->executeQuery($sql, [$now, $now, $mrId], 'ssi');
+                }
+            }
             
             $this->logAuditEntry('dispatch_created', 'dispatch', $dispatch['id'], $userId,
                 'warehouse', $dispatchData['from_warehouse_id'],
@@ -323,12 +365,52 @@ class DispatchService {
                 }
             }
             
-            if ($newStatus === DispatchRepository::STATUS_CANCELLED && 
-                $dispatch['status'] === DispatchRepository::STATUS_IN_TRANSIT) {
-                $restoreResult = $this->restoreStock($dispatchId, $dispatch, $userId);
-                if (!$restoreResult['success']) {
-                    $this->conn->rollback();
-                    return $restoreResult;
+            if ($newStatus === DispatchRepository::STATUS_CANCELLED) {
+                if ($dispatch['status'] === DispatchRepository::STATUS_IN_TRANSIT || 
+                    $dispatch['status'] === DispatchRepository::STATUS_PENDING) {
+                    
+                    $restoreResult = $this->restoreStock($dispatchId, $dispatch, $userId);
+                    if (!$restoreResult['success']) {
+                        $this->conn->rollback();
+                        return $restoreResult;
+                    }
+                    
+                    // Restore inventory counter values
+                    $items = $this->dispatchItemRepository->findByDispatch($dispatchId);
+                    foreach ($items as $item) {
+                        $this->inventoryCounterService->incrementCounter(
+                            'warehouse',
+                            $dispatch['from_warehouse_id'],
+                            $item['product_id'],
+                            $item['quantity'],
+                            $userId,
+                            'dispatch_cancelled'
+                        );
+                    }
+                }
+                
+                // Update pending receive record to cancelled
+                $sql = "UPDATE pending_receives SET status = 'cancelled' WHERE dispatch_id = ?";
+                $this->db->executeQuery($sql, [$dispatchId], 'i');
+                
+                // If associated with a material request, adjust quantity_dispatched and status
+                if (!empty($dispatch['material_request_id'])) {
+                    $mrId = (int)$dispatch['material_request_id'];
+                    
+                    // Decrement dispatched quantities by the amounts in this cancelled dispatch
+                    $cancelledItems = $this->dispatchItemRepository->findByDispatch($dispatchId);
+                    foreach ($cancelledItems as $cItem) {
+                        $pId = (int)$cItem['product_id'];
+                        $qty = (int)$cItem['quantity'];
+                        
+                        $sql = "UPDATE material_request_items 
+                                SET quantity_dispatched = GREATEST(0, quantity_dispatched - ?) 
+                                WHERE material_request_id = ? AND product_id = ?";
+                        $this->db->executeQuery($sql, [$qty, $mrId, $pId], 'iii');
+                    }
+                    
+                    $sql = "UPDATE material_requests SET status = 'approved', dispatched_at = NULL, updated_at = NOW() WHERE id = ?";
+                    $this->db->executeQuery($sql, [$mrId], 'i');
                 }
             }
             
@@ -791,6 +873,9 @@ class DispatchService {
                 $dispatchCreateData['from_company_id'] = $warehouse ? $warehouse['company_id'] : null;
             } elseif ($senderType === 'company') {
                 $dispatchCreateData['from_company_id'] = $senderId;
+            } elseif ($senderType === 'user') {
+                $senderUser = $this->userRepository->find($senderId);
+                $dispatchCreateData['from_company_id'] = $senderUser ? $senderUser['company_id'] : null;
             }
             
             // Set to fields based on recipient type

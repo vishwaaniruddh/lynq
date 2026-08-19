@@ -66,12 +66,16 @@ try {
     // Assets with status 'in_stock' are available for configuration
     $db = DatabaseConfig::getInstance();
     
-    $sql = "SELECT DISTINCT a.serial_number, a.status, a.product_id, p.name as product_name, a.created_at
+    $sql = "SELECT DISTINCT a.serial_number, a.status, a.product_id, p.name as product_name, w.name as warehouse_name, a.created_at
             FROM assets a
             LEFT JOIN products p ON a.product_id = p.id
+            LEFT JOIN product_categories pc ON p.category_id = pc.id
+            LEFT JOIN warehouses w ON a.warehouse_id = w.id
             WHERE a.serial_number IS NOT NULL 
             AND a.serial_number != ''
-            AND a.status = 'in_stock'";
+            AND a.status = 'in_stock'
+            AND (pc.name IS NULL OR pc.name NOT LIKE '%sim%')";
+
     
     $params = [];
     $types = '';
@@ -105,10 +109,11 @@ try {
     // Format response
     $formattedRouters = array_map(function($router) {
         return [
-            'serial_number' => $router['serial_number'],
-            'product_name' => $router['product_name'] ?? null,
-            'product_id' => $router['product_id'] ?? null,
-            'status' => $router['status'],
+            'serial_number'             => $router['serial_number'],
+            'product_name'              => $router['product_name'] ?? null,
+            'product_id'                => $router['product_id'] ?? null,
+            'warehouse_name'            => $router['warehouse_name'] ?? null,
+            'status'                    => $router['status'],
             'available_for_configuration' => true
         ];
     }, $routers);

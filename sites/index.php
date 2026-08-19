@@ -182,12 +182,16 @@ ob_start();
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Feasibility</th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Installation</th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Material</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Router Serial</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Router IP</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Network IP</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">ATM IP</th>
                     <th class="px-4 py-2.5 text-center text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody id="sites-tbody" class="divide-y divide-gray-100">
                 <tr>
-                    <td colspan="10" class="px-4 py-6 text-center text-gray-500 text-sm">Loading...</td>
+                    <td colspan="14" class="px-4 py-6 text-center text-gray-500 text-sm">Loading...</td>
                 </tr>
             </tbody>
         </table>
@@ -353,6 +357,29 @@ ob_start();
             </div>
             <div class="flex justify-end space-x-3 p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
                 <button onclick="closeViewModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delegation Details Modal -->
+<div id="delegation-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDelegationModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative z-10">
+            <div class="flex items-center justify-between p-5 border-b border-gray-100">
+                <h3 class="text-lg font-semibold text-gray-800">Delegation Details</h3>
+                <button onclick="closeDelegationModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="delegation-content" class="p-5 space-y-4">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="flex justify-end space-x-3 p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <button onclick="closeDelegationModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
                     Close
                 </button>
             </div>
@@ -732,7 +759,7 @@ function renderTable() {
     if (state.sites.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="px-4 py-10 text-center text-gray-400">
+                <td colspan="14" class="px-4 py-10 text-center text-gray-400">
                     <i class="fas fa-map-marker-alt text-3xl mb-2 text-gray-300"></i>
                     <p class="text-sm">No sites found</p>
                 </td>
@@ -779,6 +806,28 @@ function renderTable() {
             </td>
             <td class="px-4 py-2.5">
                 ${getMaterialStatusBadge(site)}
+            </td>
+            <!-- Router Serial -->
+            <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                ${site.router_serial_number 
+                    ? `<span class="flex items-center gap-1"><i class="fas fa-wifi text-primary text-[10px] opacity-75"></i>${escapeHtml(site.router_serial_number)}</span>` 
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+            <!-- Router IP -->
+            <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                ${site.router_serial_number 
+                    ? (site.router_ip ? escapeHtml(site.router_ip) : '<span class="text-amber-600 font-medium text-[10px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Unconfigured</span>') 
+                    : '<span class="text-gray-400">-</span>'
+                }
+            </td>
+            <!-- Network IP -->
+            <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                ${site.network_ip ? escapeHtml(site.network_ip) : '<span class="text-gray-400">-</span>'}
+            </td>
+            <!-- ATM IP (site_ip) -->
+            <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                ${site.site_ip ? escapeHtml(site.site_ip) : '<span class="text-gray-400">-</span>'}
             </td>
             <td class="px-4 py-2.5">
                 <div class="flex items-center justify-center gap-0.5">
@@ -1150,19 +1199,121 @@ function getDelegationBadge(site) {
         return '<span class="whitespace-nowrap px-2 py-0.5 bg-gray-100 text-gray-400 rounded-full text-[10px]"><i class="fas fa-minus mr-0.5"></i>Not Delegated</span>';
     }
     
+    let statusBadge = '';
     if (site.delegation_status === 'pending') {
-        return `<span class="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-medium" title="Delegated to ${escapeHtml(site.contractor_name || 'Contractor')}">
-            <i class="fas fa-clock mr-0.5"></i>Pending
+        statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] font-medium border border-amber-200">
+            <i class="fas fa-clock mr-0.5 text-amber-500"></i>Pending
         </span>`;
+    } else if (site.delegation_status === 'accepted') {
+        statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-medium border border-emerald-200">
+            <i class="fas fa-check mr-0.5 text-emerald-500"></i>Delegated
+        </span>`;
+    } else {
+        statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 bg-gray-50 text-gray-500 rounded text-[10px] font-medium border border-gray-200">${escapeHtml(site.delegation_status)}</span>`;
     }
     
-    if (site.delegation_status === 'accepted') {
-        return `<span class="whitespace-nowrap px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-medium" title="Accepted by ${escapeHtml(site.contractor_name || 'Contractor')}">
-            <i class="fas fa-check mr-0.5"></i>Delegated
-        </span>`;
-    }
+    return `
+        <div class="space-y-1">
+            <div class="flex items-center justify-between gap-2">
+                ${statusBadge}
+                <button onclick="showDelegationModal(${site.id})" class="text-primary hover:text-blue-700 p-0.5 rounded hover:bg-gray-100 transition-colors" title="View Delegation Details">
+                    <i class="fas fa-info-circle text-[11px]"></i>
+                </button>
+            </div>
+            <div class="text-[10px] font-semibold text-gray-700 truncate max-w-[120px]" title="${escapeHtml(site.contractor_name || '')}">${escapeHtml(site.contractor_name || 'N/A')}</div>
+            <div class="text-[9px] text-gray-400 font-mono whitespace-nowrap"><i class="far fa-calendar-alt mr-0.5 text-gray-300"></i>${formatDate(site.delegated_at)}</div>
+        </div>
+    `;
+}
+
+// Show delegation details in a modal
+function showDelegationModal(siteId) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (!site || !site.delegation_id) return;
     
-    return '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded-full text-[10px]">Unknown</span>';
+    let responseSection = '';
+    if (site.delegation_status === 'accepted' || site.delegation_status === 'rejected') {
+        responseSection = `
+            <div class="pt-3 border-t border-gray-100">
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Response Information</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">Responded By</p>
+                        <p class="font-medium text-sm text-gray-800">${site.responded_by_username ? escapeHtml(site.responded_by_username) : '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Responded At</p>
+                        <p class="font-medium text-sm text-gray-800">${formatDate(site.responded_at)}</p>
+                    </div>
+                </div>
+                ${site.rejection_notes ? `
+                <div class="mt-3">
+                    <p class="text-xs text-gray-500">Rejection Notes</p>
+                    <p class="font-medium text-sm text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 mt-1">${escapeHtml(site.rejection_notes)}</p>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    let statusBadge = '';
+    if (site.delegation_status === 'pending') {
+        statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>Pending Contractor Response</span>';
+    } else if (site.delegation_status === 'accepted') {
+        statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>Accepted by Contractor</span>';
+    } else if (site.delegation_status === 'rejected') {
+        statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-semibold border border-red-200"><span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>Rejected by Contractor</span>';
+    }
+
+    document.getElementById('delegation-content').innerHTML = `
+        <div class="space-y-4">
+            <div class="flex items-center justify-center mb-4">
+                <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100">
+                    <i class="fas fa-share-alt text-lg text-purple-500"></i>
+                </div>
+            </div>
+            
+            <div class="text-center pb-3 border-b border-gray-100">
+                <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(site.site_name)}</h4>
+                <p class="text-xs text-gray-500 mt-1">${escapeHtml(site.lho)}</p>
+            </div>
+            
+            <div>
+                <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Delegation Status</h4>
+                <div class="mt-1">${statusBadge}</div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 pt-1">
+                <div>
+                    <p class="text-xs text-gray-500">Contractor</p>
+                    <p class="font-semibold text-sm text-gray-800">${escapeHtml(site.contractor_name || 'N/A')}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Delegation ID</p>
+                    <p class="font-mono text-xs text-gray-800">#${site.delegation_id}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Delegated By</p>
+                    <p class="font-medium text-sm text-gray-800">${site.delegated_by_username ? escapeHtml(site.delegated_by_username) : '-'}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Delegated At</p>
+                    <p class="font-medium text-sm text-gray-800">${formatDate(site.delegated_at)}</p>
+                </div>
+            </div>
+            
+            ${responseSection}
+        </div>
+    `;
+    
+    document.getElementById('delegation-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Close delegation details modal
+function closeDelegationModal() {
+    document.getElementById('delegation-modal').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 // Get installation button based on feasibility status
@@ -1337,26 +1488,7 @@ function openCreateModal() {
 
 // Edit site
 function editSite(id) {
-    const site = state.sites.find(s => s.id === id);
-    if (!site) return;
-    
-    document.getElementById('modal-title').textContent = 'Edit Site';
-    document.getElementById('site-id').value = site.id;
-    document.getElementById('site-name').value = site.site_name || '';
-    document.getElementById('site-lho').value = site.lho || '';
-    document.getElementById('site-bank').value = site.bank_name || '';
-    document.getElementById('site-customer').value = site.customer_name || '';
-    document.getElementById('site-city').value = site.city || '';
-    document.getElementById('site-state').value = site.state || '';
-    document.getElementById('site-country').value = site.country || '';
-    document.getElementById('site-zone').value = site.zone || '';
-    document.getElementById('site-address').value = site.address || '';
-    document.getElementById('site-latitude').value = site.latitude || '';
-    document.getElementById('site-longitude').value = site.longitude || '';
-    document.getElementById('site-status').value = site.status || 'active';
-    clearErrors();
-    document.getElementById('site-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    window.location.href = `edit.php?id=${id}`;
 }
 
 // Close site modal
@@ -1510,6 +1642,29 @@ function viewSite(id) {
                     <p class="font-medium">${formatDate(site.updated_at)}</p>
                 </div>
             </div>
+            ${site.router_serial_number ? `
+            <div class="mt-4 pt-4 border-t">
+                <h4 class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-wifi text-primary mr-1.5"></i>Mapped Router Details</h4>
+                <div class="grid grid-cols-2 gap-4 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
+                    <div>
+                        <p class="text-xs text-gray-500">Router Serial</p>
+                        <p class="font-mono font-semibold text-sm text-gray-800">${escapeHtml(site.router_serial_number)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Router IP</p>
+                        <p class="font-mono font-semibold text-sm text-gray-800">${site.router_ip ? escapeHtml(site.router_ip) : '<span class="text-amber-600 font-medium">Unconfigured</span>'}</p>
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-500">Network IP</p>
+                        <p class="font-mono font-semibold text-sm text-gray-800">${site.network_ip ? escapeHtml(site.network_ip) : '<span class="text-gray-400">N/A</span>'}</p>
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-500">Site IP</p>
+                        <p class="font-mono font-semibold text-sm text-gray-800">${site.site_ip ? escapeHtml(site.site_ip) : '<span class="text-gray-400">N/A</span>'}</p>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
             ${site.latitude && site.longitude ? `
             <div class="mt-4 pt-4 border-t">
                 <a href="https://www.google.com/maps?q=${site.latitude},${site.longitude}" target="_blank" 

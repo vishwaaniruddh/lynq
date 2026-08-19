@@ -174,7 +174,7 @@ class ConfigurationService {
      * 
      * Requirements: 4.4, 5.1, 5.2
      */
-    public function completeConfiguration(int $lockId, int $userId, ?string $notes = null): array {
+    public function completeConfiguration(int $lockId, int $userId, ?string $notes = null, ?int $siteId = null): array {
         // Get the lock
         $lock = $this->lockRepository->findById($lockId);
         if (!$lock) {
@@ -223,7 +223,8 @@ class ConfigurationService {
                 'configured_by' => $userId,
                 'configured_at' => date('Y-m-d H:i:s'),
                 'notes' => $notes,
-                'status' => RouterIPBinding::STATUS_ACTIVE
+                'status' => RouterIPBinding::STATUS_ACTIVE,
+                'site_id' => $siteId
             ];
             
             $binding = $this->bindingModel->create($bindingData);

@@ -196,13 +196,13 @@ ob_start();
                         <h4 class="text-sm font-medium text-gray-700 mb-3">Shipping Details</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Courier</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Courier <span class="text-red-500">*</span></label>
                                 <select id="dispatch-courier" name="courier_id" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
                                     <option value="">Select Courier</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">POD Number</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">POD Number <span class="text-red-500">*</span></label>
                                 <input type="text" id="dispatch-pod" name="pod_number" placeholder="Enter POD number"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
                             </div>
@@ -214,12 +214,12 @@ ob_start();
                         <h4 class="text-sm font-medium text-gray-700 mb-3">Contact Person Details</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person Name <span class="text-red-500">*</span></label>
                                 <input type="text" id="dispatch-contact-name" name="contact_person_name" placeholder="Enter contact name"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number <span class="text-red-500">*</span></label>
                                 <input type="text" id="dispatch-contact-phone" name="contact_person_phone" placeholder="Enter contact number"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
                             </div>
@@ -231,12 +231,12 @@ ob_start();
                         <h4 class="text-sm font-medium text-gray-700 mb-3">Attachments</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">LR Copy</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">LR Copy <span class="text-red-500">*</span></label>
                                 <input type="file" id="dispatch-lr-copy" name="lr_copy" accept=".pdf,.jpg,.jpeg,.png"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">POD Receipt</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">POD Receipt <span class="text-red-500">*</span></label>
                                 <input type="file" id="dispatch-pod-receipt" name="pod_receipt" accept=".pdf,.jpg,.jpeg,.png"
                                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary text-sm">
                             </div>
@@ -274,6 +274,19 @@ ob_start();
                 <div class="mb-4">
                     <input type="text" id="serial-search" placeholder="Search serial numbers..." oninput="filterSerialNumbers()"
                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
+                </div>
+                <!-- Router config legend (shown only when checking router config) -->
+                <div id="serial-config-legend" class="hidden mb-3 flex items-center gap-4 text-xs text-gray-500">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"></span>Configured
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>Unconfigured (cannot dispatch)
+                    </span>
+                </div>
+                <div id="serial-config-loading" class="hidden text-center py-3">
+                    <i class="fas fa-spinner fa-spin text-primary mr-2"></i>
+                    <span class="text-sm text-gray-500">Checking router configuration status...</span>
                 </div>
                 <div id="serial-list" class="max-h-60 overflow-y-auto space-y-2 border rounded-lg p-2">
                     <p class="text-gray-500 text-sm text-center py-4">No serial numbers available</p>
@@ -341,7 +354,7 @@ const state = {
     permissions: { create: <?php echo json_encode($canCreate); ?>, acknowledge: <?php echo json_encode($canAcknowledge); ?> },
     currentDispatch: null,
     dispatchItems: [],
-    serialPicker: { itemIndex: null, productId: null, availableAssets: [], selectedAssets: [], isMaterialRequest: false, maxSelection: null },
+    serialPicker: { itemIndex: null, productId: null, availableAssets: [], selectedAssets: [], isMaterialRequest: false, maxSelection: null, configuredSerials: {}, isCheckingConfig: false },
     materialRequestId: null,
     materialRequestItems: [],
     materialRequestSiteId: null,
@@ -458,6 +471,9 @@ function prefillMaterialRequestItems(request) {
     state.dispatchItems = [];
     
     items.forEach(item => {
+        const remainingQty = Math.max(0, (parseInt(item.quantity_requested) || 0) - (parseInt(item.quantity_dispatched) || 0));
+        if (remainingQty <= 0) return; // Skip if already fully dispatched
+        
         // Find stock availability for this product across all warehouses
         const stockOptions = findStockForProduct(item.product_id);
         
@@ -468,8 +484,8 @@ function prefillMaterialRequestItems(request) {
             productId: item.product_id,
             productName: item.product_name,
             categoryName: item.category_name,
-            requestedQuantity: item.quantity_requested || item.quantity || 1,
-            quantity: item.quantity_requested || item.quantity || 1,
+            requestedQuantity: remainingQty,
+            quantity: remainingQty,
             isSerializable: isSerializable,
             selectedAssets: [],
             stockOptions: stockOptions, // Available warehouses with stock
@@ -499,10 +515,10 @@ function findStockForProduct(productId) {
         }
     });
     
-    // Check serializable assets
+    // Check serializable assets (only in_stock)
     const assetsByWarehouse = {};
     state.allWarehouseAssets.forEach(asset => {
-        if (asset.product_id == productId) {
+        if (asset.product_id == productId && (!asset.status || asset.status === 'in_stock')) {
             if (!assetsByWarehouse[asset.warehouse_id]) {
                 assetsByWarehouse[asset.warehouse_id] = {
                     warehouseId: asset.warehouse_id,
@@ -516,6 +532,7 @@ function findStockForProduct(productId) {
             assetsByWarehouse[asset.warehouse_id].assets.push(asset);
         }
     });
+
     
     // Merge serializable options (avoid duplicates)
     Object.values(assetsByWarehouse).forEach(opt => {
@@ -728,25 +745,57 @@ function onMaterialRequestQuantityChange(index, quantity) {
     state.dispatchItems[index].quantity = Math.min(Math.max(1, parseInt(quantity) || 1), maxQty);
 }
 
-function openSerialPickerForMaterialRequest(itemIndex) {
+async function openSerialPickerForMaterialRequest(itemIndex) {
     const item = state.dispatchItems[itemIndex];
     if (!item || !item.selectedWarehouseId) return;
     
-    // Get assets for selected warehouse
+    // Get assets for selected warehouse — only in_stock
     const selectedWarehouse = item.stockOptions.find(o => o.warehouseId == item.selectedWarehouseId);
-    const availableAssets = selectedWarehouse?.assets || state.allWarehouseAssets.filter(
+    const rawAssets = selectedWarehouse?.assets || state.allWarehouseAssets.filter(
         a => a.product_id == item.productId && a.warehouse_id == item.selectedWarehouseId
     );
+    // Filter to only in_stock assets
+    const availableAssets = rawAssets.filter(a => !a.status || a.status === 'in_stock');
     
     state.serialPicker.itemIndex = itemIndex;
     state.serialPicker.productId = item.productId;
     state.serialPicker.availableAssets = availableAssets;
     state.serialPicker.selectedAssets = [...item.selectedAssets];
     state.serialPicker.isMaterialRequest = true;
-    state.serialPicker.maxSelection = item.requestedQuantity || null; // Limit to requested quantity
+    state.serialPicker.maxSelection = item.requestedQuantity || null;
+    state.serialPicker.configuredSerials = {}; // reset
     
-    renderSerialList();
+    // Show modal first
     document.getElementById('serial-picker-modal').classList.remove('hidden');
+    renderSerialList();
+    
+    // Fetch configuration status — only for router products, not SIM cards etc.
+    if (availableAssets.length > 0) {
+        const serials = availableAssets.map(a => a.serial_number).filter(Boolean);
+        if (serials.length > 0) {
+            const loadingEl = document.getElementById('serial-config-loading');
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            
+            try {
+                const params = [
+                    ...serials.map(s => `serials[]=${encodeURIComponent(s)}`),
+                    item.productId ? `product_id=${encodeURIComponent(item.productId)}` : ''
+                ].filter(Boolean).join('&');
+                const response = await fetch(`../api/configuration/serial_status.php?${params}`, { credentials: 'include' });
+                const data = await response.json();
+                if (data.success && data.data.is_router_product) {
+                    // Only apply config statuses for router products
+                    state.serialPicker.configuredSerials = data.data.statuses || {};
+                }
+                // For non-router products (SIM cards etc.), configuredSerials stays empty — no config UI shown
+            } catch (e) {
+                console.warn('Could not check router configuration status:', e);
+            } finally {
+                if (loadingEl) loadingEl.classList.add('hidden');
+                renderSerialList(); // Re-render with config status
+            }
+        }
+    }
 }
 
 function setupEventListeners() {
@@ -1053,8 +1102,12 @@ function openSerialPicker(itemIndex) {
     
     state.serialPicker.itemIndex = itemIndex;
     state.serialPicker.productId = item.productId;
-    state.serialPicker.availableAssets = state.warehouseAssets.filter(a => a.product_id == item.productId);
+    // Only show in_stock assets
+    state.serialPicker.availableAssets = state.warehouseAssets.filter(
+        a => a.product_id == item.productId && (!a.status || a.status === 'in_stock')
+    );
     state.serialPicker.selectedAssets = [...item.selectedAssets];
+    state.serialPicker.configuredSerials = {};
     
     renderSerialList();
     document.getElementById('serial-picker-modal').classList.remove('hidden');
@@ -1065,6 +1118,12 @@ function renderSerialList() {
     const search = (document.getElementById('serial-search').value || '').toLowerCase();
     const maxSelection = state.serialPicker.maxSelection;
     const selectedCount = state.serialPicker.selectedAssets.length;
+    const configuredSerials = state.serialPicker.configuredSerials; // {} or null means no config check
+    const hasConfigCheck = Object.keys(configuredSerials).length > 0;
+    
+    // Show/hide legend
+    const legendEl = document.getElementById('serial-config-legend');
+    if (legendEl) legendEl.classList.toggle('hidden', !hasConfigCheck);
     
     let assets = state.serialPicker.availableAssets;
     if (search) {
@@ -1076,12 +1135,56 @@ function renderSerialList() {
     } else {
         container.innerHTML = assets.map(asset => {
             const isSelected = state.serialPicker.selectedAssets.includes(asset.id);
-            const isDisabled = !isSelected && maxSelection && selectedCount >= maxSelection;
+            const configInfo = hasConfigCheck ? configuredSerials[asset.serial_number] : null;
+            
+            // Extract status, site_id, site_name (support both object and string format)
+            const configStatus = (configInfo && typeof configInfo === 'object') ? configInfo.status : configInfo;
+            const siteId = (configInfo && typeof configInfo === 'object') ? configInfo.site_id : null;
+            const siteName = (configInfo && typeof configInfo === 'object') ? configInfo.site_name : null;
+            
+            const isUnconfigured = configStatus === 'unconfigured';
+            const isConfigured = configStatus === 'configured';
+            
+            // Mapped to a different site?
+            const currentSiteId = state.materialRequestSiteId;
+            const isMismapped = isConfigured && siteId !== null && (currentSiteId === null || parseInt(siteId) !== parseInt(currentSiteId));
+            
+            const isDisabled = isUnconfigured || isMismapped || (!isSelected && maxSelection && selectedCount >= maxSelection);
+            
+            let rowClass = 'flex items-center p-2.5 rounded-lg border border-transparent transition-all cursor-pointer ';
+            if (isUnconfigured || isMismapped) {
+                rowClass += 'bg-gray-50 opacity-60 cursor-not-allowed';
+            } else if (isSelected) {
+                rowClass += 'bg-blue-50 border-blue-200';
+            } else if (isConfigured) {
+                rowClass += 'hover:bg-green-50 hover:border-green-200';
+            } else {
+                rowClass += 'hover:bg-gray-50';
+            }
+            
+            let badge = '';
+            if (isMismapped) {
+                badge = `<span class="ml-2 px-1.5 py-0.5 bg-red-50 text-red-700 text-[10px] font-medium rounded-full flex items-center gap-0.5 border border-red-200"><i class="fas fa-exclamation-circle text-[9px] text-red-500"></i>Mapped to ${escapeHtml(siteName || 'Another Site')}</span>`;
+            } else if (isConfigured) {
+                badge = `<span class="ml-2 px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-medium rounded-full flex items-center gap-0.5"><i class="fas fa-check-circle text-[9px]"></i>Configured</span>`;
+            } else if (isUnconfigured) {
+                badge = `<span class="ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-medium rounded-full flex items-center gap-0.5"><i class="fas fa-times-circle text-[9px]"></i>Unconfigured</span>`;
+            }
+            
+            let labelTitle = '';
+            if (isUnconfigured) {
+                labelTitle = 'Router not configured - cannot be dispatched';
+            } else if (isMismapped) {
+                labelTitle = `Router is mapped to another site: ${siteName || 'Another Site'}`;
+            }
+            
             return `
-            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer ${isSelected ? 'bg-blue-50' : ''} ${isDisabled ? 'opacity-50' : ''}">
-                <input type="checkbox" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="toggleSerialSelection(${asset.id})" class="mr-3">
-                <span class="font-mono text-sm">${escapeHtml(asset.serial_number)}</span>
-                <span class="ml-auto text-xs text-gray-500">${escapeHtml(asset.working_condition || 'working')}</span>
+            <label class="${rowClass}" ${labelTitle ? `title="${escapeHtml(labelTitle)}"` : ''}>
+                <input type="checkbox" ${isSelected ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="toggleSerialSelection(${asset.id})" class="mr-3 accent-blue-600" ${isUnconfigured || isMismapped ? 'style="display:none"' : ''}>
+                ${isUnconfigured || isMismapped ? '<span class="w-4 h-4 rounded border border-gray-300 bg-gray-200 mr-3 flex-shrink-0 inline-block"></span>' : ''}
+                <span class="font-mono text-sm ${isUnconfigured || isMismapped ? 'text-gray-400' : 'text-gray-800'}">${escapeHtml(asset.serial_number)}</span>
+                ${badge}
+                <span class="ml-auto text-xs text-gray-400">${escapeHtml(asset.working_condition || 'working')}</span>
             </label>
             `;
         }).join('');
@@ -1134,6 +1237,11 @@ function closeSerialPickerModal() {
     document.getElementById('serial-search').value = '';
     state.serialPicker.isMaterialRequest = false;
     state.serialPicker.maxSelection = null;
+    state.serialPicker.configuredSerials = {};
+    const legendEl = document.getElementById('serial-config-legend');
+    if (legendEl) legendEl.classList.add('hidden');
+    const loadingEl = document.getElementById('serial-config-loading');
+    if (loadingEl) loadingEl.classList.add('hidden');
 }
 
 // Dispatch Modal
@@ -1189,6 +1297,14 @@ function closeDispatchModal() {
 async function saveDispatch(event) {
     event.preventDefault();
     
+    // Clear previous error messages and borders
+    document.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500');
+    });
+    document.querySelectorAll('.dispatch-field-error-msg').forEach(el => {
+        el.remove();
+    });
+    
     // Validate items
     if (state.dispatchItems.length === 0) { showToast('Please add at least one item', 'error'); return; }
     
@@ -1218,6 +1334,58 @@ async function saveDispatch(event) {
     const form = document.getElementById('dispatch-form');
     const formData = new FormData(form);
     
+    // Client-side validation for mandatory fields
+    let firstErrorElement = null;
+    function showErrorMsg(fieldId, msg) {
+        const inputEl = document.getElementById(fieldId);
+        if (inputEl) {
+            inputEl.classList.add('border-red-500');
+            const parent = inputEl.closest('div');
+            const errorEl = document.createElement('p');
+            errorEl.className = 'mt-1 text-xs text-red-500 dispatch-field-error-msg';
+            errorEl.textContent = msg;
+            parent.appendChild(errorEl);
+            if (!firstErrorElement) {
+                firstErrorElement = inputEl;
+            }
+        }
+    }
+    
+    const courier = formData.get('courier_id');
+    const pod = formData.get('pod_number');
+    const contactName = formData.get('contact_person_name');
+    const contactPhone = formData.get('contact_person_phone');
+    const lrCopyInput = document.getElementById('dispatch-lr-copy');
+    const podReceiptInput = document.getElementById('dispatch-pod-receipt');
+    
+    if (!courier || courier === '') {
+        showErrorMsg('dispatch-courier', 'Courier selection is required');
+    }
+    if (!pod || pod.trim() === '') {
+        showErrorMsg('dispatch-pod', 'POD Number is required');
+    }
+    if (!contactName || contactName.trim() === '') {
+        showErrorMsg('dispatch-contact-name', 'Contact person name is required');
+    }
+    if (!contactPhone || contactPhone.trim() === '') {
+        showErrorMsg('dispatch-contact-phone', 'Contact number is required');
+    }
+    if (!lrCopyInput || !lrCopyInput.files[0]) {
+        showErrorMsg('dispatch-lr-copy', 'LR Copy file attachment is required');
+    }
+    if (!podReceiptInput || !podReceiptInput.files[0]) {
+        showErrorMsg('dispatch-pod-receipt', 'POD Receipt file attachment is required');
+    }
+    
+    if (firstErrorElement) {
+        firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+            firstErrorElement.focus();
+        }, 300);
+        showToast('Please correct validation errors', 'error');
+        return;
+    }
+    
     // For material requests with per-item warehouses, we need to create multiple dispatches (one per warehouse)
     if (isMaterialRequestDispatch) {
         // Group items by warehouse
@@ -1231,36 +1399,68 @@ async function saveDispatch(event) {
         let successCount = 0;
         let errorMsg = '';
         
+        // Calculate is_partial
+        let isPartial = false;
+        if (state.materialRequestId && state.materialRequestItems.length > 0) {
+            const requestedMap = {};
+            state.materialRequestItems.forEach(item => {
+                requestedMap[item.product_id] = parseInt(item.quantity_requested) || 0;
+            });
+            
+            const dispatchedMap = {};
+            validItems.forEach(item => {
+                const qty = item.isSerializable ? item.selectedAssets.length : parseInt(item.quantity) || 0;
+                dispatchedMap[item.productId] = (dispatchedMap[item.productId] || 0) + qty;
+            });
+            
+            for (const productId in requestedMap) {
+                const reqQty = requestedMap[productId];
+                const dispQty = dispatchedMap[productId] || 0;
+                if (dispQty < reqQty) {
+                    isPartial = true;
+                    break;
+                }
+            }
+        }
+        
         for (const [warehouseId, items] of Object.entries(itemsByWarehouse)) {
-            const dispatchData = {
-                from_warehouse_id: warehouseId,
-                dispatch_date: formData.get('dispatch_date'),
-                courier_id: formData.get('courier_id') || null,
-                pod_number: formData.get('pod_number') || null,
-                contact_person_name: formData.get('contact_person_name') || null,
-                contact_person_phone: formData.get('contact_person_phone') || null,
-                notes: formData.get('notes') || null,
-                material_request_id: state.materialRequestId || null,
-                site_id: state.materialRequestSiteId || null,
-                items: items.map(item => ({
-                    product_id: item.productId,
-                    quantity: item.isSerializable ? item.selectedAssets.length : item.quantity,
-                    asset_ids: item.isSerializable ? item.selectedAssets : []
-                }))
-            };
+            const payloadData = new FormData();
+            payloadData.append('from_warehouse_id', warehouseId);
+            payloadData.append('dispatch_date', formData.get('dispatch_date'));
+            payloadData.append('courier_id', formData.get('courier_id') || '');
+            payloadData.append('pod_number', formData.get('pod_number') || '');
+            payloadData.append('contact_person_name', formData.get('contact_person_name') || '');
+            payloadData.append('contact_person_phone', formData.get('contact_person_phone') || '');
+            payloadData.append('notes', formData.get('notes') || '');
+            payloadData.append('material_request_id', state.materialRequestId || '');
+            payloadData.append('site_id', state.materialRequestSiteId || '');
+            payloadData.append('is_partial', isPartial ? 1 : 0);
+            
+            const itemPayloads = items.map(item => ({
+                product_id: item.productId,
+                quantity: item.isSerializable ? item.selectedAssets.length : item.quantity,
+                asset_ids: item.isSerializable ? item.selectedAssets : []
+            }));
+            payloadData.append('items', JSON.stringify(itemPayloads));
+            
+            if (lrCopyInput.files[0]) {
+                payloadData.append('lr_copy', lrCopyInput.files[0]);
+            }
+            if (podReceiptInput.files[0]) {
+                payloadData.append('pod_receipt', podReceiptInput.files[0]);
+            }
             
             // Add destination
             const destType = formData.get('destination_type');
-            if (destType === 'company') dispatchData.to_company_id = formData.get('to_company_id');
-            else if (destType === 'user') dispatchData.to_user_id = formData.get('to_user_id');
-            else if (destType === 'warehouse') dispatchData.to_warehouse_id = formData.get('to_warehouse_id');
+            if (destType === 'company') payloadData.append('to_company_id', formData.get('to_company_id') || '');
+            else if (destType === 'user') payloadData.append('to_user_id', formData.get('to_user_id') || '');
+            else if (destType === 'warehouse') payloadData.append('to_warehouse_id', formData.get('to_warehouse_id') || '');
             
             try {
                 const response = await fetch(`${API_URL}/create.php`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify(dispatchData)
+                    body: payloadData
                 });
                 
                 const result = await response.json();
@@ -1276,18 +1476,8 @@ async function saveDispatch(event) {
         }
         
         if (successCount > 0) {
-            // Update material request status
+            // Update material request status on frontend state only
             if (state.materialRequestId) {
-                try {
-                    await fetch('../api/material-requests/status.php', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ id: parseInt(state.materialRequestId), status: 'dispatched' })
-                    });
-                } catch (e) {
-                    console.error('Failed to update material request status:', e);
-                }
                 state.materialRequestId = null;
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
@@ -1302,52 +1492,74 @@ async function saveDispatch(event) {
     }
     
     // Standard dispatch (single warehouse)
-    const dispatchData = {
-        from_warehouse_id: formData.get('from_warehouse_id'),
-        dispatch_date: formData.get('dispatch_date'),
-        courier_id: formData.get('courier_id') || null,
-        pod_number: formData.get('pod_number') || null,
-        contact_person_name: formData.get('contact_person_name') || null,
-        contact_person_phone: formData.get('contact_person_phone') || null,
-        notes: formData.get('notes') || null,
-        material_request_id: state.materialRequestId || null,
-        site_id: state.materialRequestSiteId || null,
-        items: validItems.map(item => ({
-            product_id: item.productId,
-            quantity: item.isSerializable ? item.selectedAssets.length : item.quantity,
-            asset_ids: item.isSerializable ? item.selectedAssets : []
-        }))
-    };
+    // Calculate is_partial
+    let isPartial = false;
+    if (state.materialRequestId && state.materialRequestItems.length > 0) {
+        const requestedMap = {};
+        state.materialRequestItems.forEach(item => {
+            requestedMap[item.product_id] = parseInt(item.quantity_requested) || 0;
+        });
+        
+        const dispatchedMap = {};
+        validItems.forEach(item => {
+            const qty = item.isSerializable ? item.selectedAssets.length : parseInt(item.quantity) || 0;
+            dispatchedMap[item.productId] = (dispatchedMap[item.productId] || 0) + qty;
+        });
+        
+        for (const productId in requestedMap) {
+            const reqQty = requestedMap[productId];
+            const dispQty = dispatchedMap[productId] || 0;
+            if (dispQty < reqQty) {
+                isPartial = true;
+                break;
+            }
+        }
+    }
+
+    const payloadData = new FormData();
+    payloadData.append('from_warehouse_id', formData.get('from_warehouse_id'));
+    payloadData.append('dispatch_date', formData.get('dispatch_date'));
+    payloadData.append('courier_id', formData.get('courier_id') || '');
+    payloadData.append('pod_number', formData.get('pod_number') || '');
+    payloadData.append('contact_person_name', formData.get('contact_person_name') || '');
+    payloadData.append('contact_person_phone', formData.get('contact_person_phone') || '');
+    payloadData.append('notes', formData.get('notes') || '');
+    payloadData.append('material_request_id', state.materialRequestId || '');
+    payloadData.append('site_id', state.materialRequestSiteId || '');
+    payloadData.append('is_partial', isPartial ? 1 : 0);
+    
+    const itemPayloads = validItems.map(item => ({
+        product_id: item.productId,
+        quantity: item.isSerializable ? item.selectedAssets.length : item.quantity,
+        asset_ids: item.isSerializable ? item.selectedAssets : []
+    }));
+    payloadData.append('items', JSON.stringify(itemPayloads));
+    
+    if (lrCopyInput.files[0]) {
+        payloadData.append('lr_copy', lrCopyInput.files[0]);
+    }
+    if (podReceiptInput.files[0]) {
+        payloadData.append('pod_receipt', podReceiptInput.files[0]);
+    }
     
     // Add destination
     const destType = formData.get('destination_type');
-    if (destType === 'company') dispatchData.to_company_id = formData.get('to_company_id');
-    else if (destType === 'user') dispatchData.to_user_id = formData.get('to_user_id');
-    else if (destType === 'warehouse') dispatchData.to_warehouse_id = formData.get('to_warehouse_id');
+    if (destType === 'company') payloadData.append('to_company_id', formData.get('to_company_id') || '');
+    else if (destType === 'user') payloadData.append('to_user_id', formData.get('to_user_id') || '');
+    else if (destType === 'warehouse') payloadData.append('to_warehouse_id', formData.get('to_warehouse_id') || '');
     
     try {
         const response = await fetch(`${API_URL}/create.php`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify(dispatchData)
+            body: payloadData
         });
         
         const result = await response.json();
         
         if (result.success) {
-            // If this was for a material request, update its status to dispatched
+            // If this was for a material request, update its status on frontend state only
             if (state.materialRequestId) {
-                try {
-                    await fetch('../api/material-requests/status.php', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ id: parseInt(state.materialRequestId), status: 'dispatched' })
-                    });
-                } catch (e) {
-                    console.error('Failed to update material request status:', e);
-                }
                 state.materialRequestId = null;
                 // Clear URL parameter
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -1495,6 +1707,11 @@ function renderTable() {
                     <span class="font-medium text-xs text-primary cursor-pointer hover:underline" onclick="viewDispatch(${d.id})">
                         ${escapeHtml(d.dispatch_number)}
                     </span>
+                    ${parseInt(d.is_partial) === 1 ? `
+                        <span class="ml-1 inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[9px] font-medium" title="Partial Dispatch (Not full list of materials)">
+                            <i class="fas fa-exclamation-triangle mr-0.5 text-[8px] text-amber-500"></i>Partial
+                        </span>
+                    ` : ''}
                     <p class="text-[10px] text-gray-500">${formatDate(d.dispatch_date)}</p>
                     <p class="text-[10px] text-gray-400">${escapeHtml(d.from_warehouse_name || '-')}</p>
                     ${d.notes ? `<p class="text-[10px] text-gray-400 italic mt-0.5 truncate max-w-[120px]" title="${escapeHtml(d.notes)}">${escapeHtml(d.notes.substring(0, 25))}${d.notes.length > 25 ? '...' : ''}</p>` : ''}
@@ -1572,17 +1789,28 @@ async function viewDispatch(id) {
             
             let attachmentsHtml = '';
             if (d.lr_copy_path || d.pod_receipt_path) {
+                const lrUrl = d.lr_copy_path ? (d.lr_copy_path.startsWith('http') || d.lr_copy_path.startsWith('/') ? d.lr_copy_path : `../${d.lr_copy_path}`) : '';
+                const podUrl = d.pod_receipt_path ? (d.pod_receipt_path.startsWith('http') || d.pod_receipt_path.startsWith('/') ? d.pod_receipt_path : `../${d.pod_receipt_path}`) : '';
                 attachmentsHtml = `
                 <div class="border-t pt-4 mt-4">
                     <h4 class="text-sm font-medium text-gray-700 mb-3">Attachments</h4>
                     <div class="flex gap-4">
-                        ${d.lr_copy_path ? `<a href="${escapeHtml(d.lr_copy_path)}" target="_blank" class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-file mr-2"></i>LR Copy</a>` : ''}
-                        ${d.pod_receipt_path ? `<a href="${escapeHtml(d.pod_receipt_path)}" target="_blank" class="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"><i class="fas fa-file mr-2"></i>POD Receipt</a>` : ''}
+                        ${d.lr_copy_path ? `<a href="${escapeHtml(lrUrl)}" target="_blank" class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"><i class="fas fa-file mr-2"></i>LR Copy</a>` : ''}
+                        ${d.pod_receipt_path ? `<a href="${escapeHtml(podUrl)}" target="_blank" class="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"><i class="fas fa-file mr-2"></i>POD Receipt</a>` : ''}
                     </div>
                 </div>`;
             }
             
             document.getElementById('view-dispatch-content').innerHTML = `
+                ${parseInt(d.is_partial) === 1 ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2.5 mb-4">
+                    <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs font-semibold text-amber-800">Partial Dispatch</p>
+                        <p class="text-[11px] text-amber-600">This dispatch was not done with the full list of requested materials.</p>
+                    </div>
+                </div>
+                ` : ''}
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="bg-gray-50 p-3 rounded"><p class="text-xs text-gray-500">Dispatch #</p><p class="font-semibold">${escapeHtml(d.dispatch_number)}</p></div>
                     <div class="bg-gray-50 p-3 rounded"><p class="text-xs text-gray-500">Date</p><p class="font-semibold">${formatDate(d.dispatch_date)}</p></div>

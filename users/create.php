@@ -229,18 +229,20 @@ ob_start();
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Username *</label>
-                    <input type="text" name="username" required
+                    <input type="text" name="username" id="username" required
                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         value="<?php echo htmlspecialchars($formData['username'] ?? ''); ?>"
                         placeholder="Enter username">
+                    <div id="username-error" class="text-xs text-red-500 mt-1 hidden"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                    <input type="email" name="email" required
+                    <input type="email" name="email" id="email" required
                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         value="<?php echo htmlspecialchars($formData['email'] ?? ''); ?>"
                         placeholder="Enter email">
+                    <div id="email-error" class="text-xs text-red-500 mt-1 hidden"></div>
                 </div>
             </div>
             
@@ -263,18 +265,32 @@ ob_start();
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Company *</label>
-                    <select name="company_id" id="company_id" required
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                        onchange="filterRoles()">
-                        <option value="">Select Company</option>
-                        <?php foreach ($companies as $company): ?>
-                        <option value="<?php echo $company['id']; ?>" 
-                            data-type="<?php echo $company['type']; ?>"
-                            <?php echo ($formData['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($company['name']); ?> (<?php echo $company['type']; ?>)
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php if (!isAdvUser()): ?>
+                        <?php $lockedCompany = $companies[0] ?? null; ?>
+                        <?php if ($lockedCompany): ?>
+                        <input type="hidden" name="company_id" id="company_id"
+                            value="<?php echo $lockedCompany['id']; ?>"
+                            data-type="<?php echo $lockedCompany['type']; ?>">
+                        <div class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700 flex items-center gap-2">
+                            <i class="fas fa-building text-gray-400"></i>
+                            <span><?php echo htmlspecialchars($lockedCompany['name']); ?></span>
+                            <span class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700"><?php echo $lockedCompany['type']; ?></span>
+                        </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <select name="company_id" id="company_id" required
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            onchange="filterRoles()">
+                            <option value="">Select Company</option>
+                            <?php foreach ($companies as $company): ?>
+                            <option value="<?php echo $company['id']; ?>" 
+                                data-type="<?php echo $company['type']; ?>"
+                                <?php echo ($formData['company_id'] ?? '') == $company['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($company['name']); ?> (<?php echo $company['type']; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 
                 <div>
@@ -305,7 +321,7 @@ ob_start();
                 <a href="index.php" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
                     Cancel
                 </a>
-                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition">
+                <button type="submit" id="submit-btn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     <i class="fas fa-save mr-2"></i>Create User
                 </button>
             </div>
@@ -315,23 +331,24 @@ ob_start();
 
 <script>
 function filterRoles() {
-    const companySelect = document.getElementById('company_id');
+    const companyEl = document.getElementById('company_id');
     const roleSelect = document.getElementById('role_id');
-    const selectedOption = companySelect.options[companySelect.selectedIndex];
-    const companyType = selectedOption ? selectedOption.dataset.type : '';
+    // For contractors the company field is a hidden input, not a select
+    const companyType = companyEl ? (companyEl.tagName === 'SELECT'
+        ? (companyEl.options[companyEl.selectedIndex]?.dataset.type || '')
+        : companyEl.dataset.type) : '';
     
     Array.from(roleSelect.options).forEach(option => {
         if (option.value === '') {
             option.style.display = '';
         } else {
-            // Show role if it matches company type OR if role is 'BOTH'
             const roleType = option.dataset.type;
-            const shouldShow = roleType === companyType || roleType === 'BOTH';
+            const shouldShow = !companyType || roleType === companyType || roleType === 'BOTH';
             option.style.display = shouldShow ? '' : 'none';
         }
     });
     
-    // Reset role selection if current selection doesn't match
+    // Reset role selection if currently selected role is now hidden
     if (roleSelect.value) {
         const selectedRole = roleSelect.options[roleSelect.selectedIndex];
         if (selectedRole && selectedRole.style.display === 'none') {
@@ -340,8 +357,136 @@ function filterRoles() {
     }
 }
 
+// Real-time validation state
+const formValidity = {
+    username: true,
+    email: true
+};
+
+// Update submit button disabled status
+function updateSubmitButton() {
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = !formValidity.username || !formValidity.email;
+    }
+}
+
+// Debounce helper
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// Validate Username
+const checkUsernameUniqueness = debounce(async (username) => {
+    const errorDiv = document.getElementById('username-error');
+    const input = document.getElementById('username');
+    
+    if (!username || username.trim() === '') {
+        errorDiv.classList.add('hidden');
+        input.classList.remove('border-red-500', 'focus:ring-red-500');
+        formValidity.username = true;
+        updateSubmitButton();
+        return;
+    }
+    
+    if (username.length < 3) {
+        errorDiv.textContent = 'Username must be at least 3 characters';
+        errorDiv.classList.remove('hidden');
+        input.classList.add('border-red-500', 'focus:ring-red-500');
+        formValidity.username = false;
+        updateSubmitButton();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`../api/users/check-uniqueness.php?username=${encodeURIComponent(username)}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data.username_exists) {
+            errorDiv.textContent = 'Username already exists';
+            errorDiv.classList.remove('hidden');
+            input.classList.add('border-red-500', 'focus:ring-red-500');
+            formValidity.username = false;
+        } else {
+            errorDiv.classList.add('hidden');
+            input.classList.remove('border-red-500', 'focus:ring-red-500');
+            formValidity.username = true;
+        }
+    } catch (error) {
+        console.error('Uniqueness check failed:', error);
+    }
+    updateSubmitButton();
+}, 300);
+
+// Validate Email
+const checkEmailUniqueness = debounce(async (email) => {
+    const errorDiv = document.getElementById('email-error');
+    const input = document.getElementById('email');
+    
+    if (!email || email.trim() === '') {
+        errorDiv.classList.add('hidden');
+        input.classList.remove('border-red-500', 'focus:ring-red-500');
+        formValidity.email = true;
+        updateSubmitButton();
+        return;
+    }
+    
+    // Simple email regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        errorDiv.textContent = 'Invalid email format';
+        errorDiv.classList.remove('hidden');
+        input.classList.add('border-red-500', 'focus:ring-red-500');
+        formValidity.email = false;
+        updateSubmitButton();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`../api/users/check-uniqueness.php?email=${encodeURIComponent(email)}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data.email_exists) {
+            errorDiv.textContent = 'Email already exists';
+            errorDiv.classList.remove('hidden');
+            input.classList.add('border-red-500', 'focus:ring-red-500');
+            formValidity.email = false;
+        } else {
+            errorDiv.classList.add('hidden');
+            input.classList.remove('border-red-500', 'focus:ring-red-500');
+            formValidity.email = true;
+        }
+    } catch (error) {
+        console.error('Uniqueness check failed:', error);
+    }
+    updateSubmitButton();
+}, 300);
+
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', filterRoles);
+document.addEventListener('DOMContentLoaded', () => {
+    filterRoles();
+    
+    // Event listeners for real-time validation
+    const usernameInput = document.getElementById('username');
+    if (usernameInput) {
+        usernameInput.addEventListener('input', (e) => checkUsernameUniqueness(e.target.value));
+        usernameInput.addEventListener('blur', (e) => checkUsernameUniqueness(e.target.value));
+    }
+    
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('input', (e) => checkEmailUniqueness(e.target.value));
+        emailInput.addEventListener('blur', (e) => checkEmailUniqueness(e.target.value));
+    }
+});
 </script>
 
 <?php

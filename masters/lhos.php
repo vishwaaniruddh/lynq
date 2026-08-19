@@ -92,12 +92,13 @@ ob_start();
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" data-sort="id">ID <i class="fas fa-sort ml-1 text-gray-400"></i></th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" data-sort="lho_name">LHO Name <i class="fas fa-sort ml-1 text-gray-400"></i></th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Managers</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Emails</th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" data-sort="status">Status <i class="fas fa-sort ml-1 text-gray-400"></i></th>
                     <th class="px-4 py-2.5 text-center text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody id="lhos-tbody" class="divide-y divide-gray-100">
-                <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500 text-sm">Loading...</td></tr>
+                <tr><td colspan="7" class="px-4 py-6 text-center text-gray-500 text-sm">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -148,6 +149,20 @@ ob_start();
                         </div>
                         <p class="mt-1 text-xs text-gray-500">Select ADV users to assign as managers for this LHO</p>
                         <p id="managers-error" class="mt-1 text-sm text-red-500 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="lho-to-emails" class="block text-sm font-medium text-gray-700 mb-1">To Emails</label>
+                        <input type="text" id="lho-to-emails" name="to_emails"
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder="Enter to emails (e.g. to1@test.com, to2@test.com)">
+                        <p id="to_emails-error" class="mt-1 text-sm text-red-500 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="lho-cc-emails" class="block text-sm font-medium text-gray-700 mb-1">Cc Emails</label>
+                        <input type="text" id="lho-cc-emails" name="cc_emails"
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder="Enter cc emails (e.g. cc1@test.com, cc2@test.com)">
+                        <p id="cc_emails-error" class="mt-1 text-sm text-red-500 hidden"></p>
                     </div>
                     <div>
                         <label for="lho-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -395,7 +410,7 @@ function renderTable() {
     const tbody = document.getElementById('lhos-tbody');
     
     if (state.lhos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">
             <i class="fas fa-building text-4xl mb-3 text-gray-300"></i><p>No LHOs found</p></td></tr>`;
         return;
     }
@@ -414,6 +429,13 @@ function renderTable() {
             </td>
             <td class="px-4 py-2.5">
                 <div class="flex flex-wrap gap-1">${renderManagerBadges(lho.managers)}</div>
+            </td>
+            <td class="px-4 py-2.5">
+                <div class="space-y-0.5 text-xs">
+                    ${lho.to_emails ? `<div><span class="text-gray-400 font-medium">To:</span> <span class="text-gray-700">${escapeHtml(lho.to_emails)}</span></div>` : ''}
+                    ${lho.cc_emails ? `<div><span class="text-gray-400 font-medium">Cc:</span> <span class="text-gray-500">${escapeHtml(lho.cc_emails)}</span></div>` : ''}
+                    ${!lho.to_emails && !lho.cc_emails ? '<span class="text-gray-400 italic">No emails</span>' : ''}
+                </div>
             </td>
             <td class="px-4 py-2.5">
                 ${lho.status === 'active' 
@@ -457,6 +479,8 @@ function openCreateModal() {
     document.getElementById('modal-title').textContent = 'Add LHO';
     document.getElementById('lho-id').value = '';
     document.getElementById('lho-name').value = '';
+    document.getElementById('lho-to-emails').value = '';
+    document.getElementById('lho-cc-emails').value = '';
     document.getElementById('lho-status').value = 'active';
     state.selectedManagers = [];
     updateSelectedManagersDisplay();
@@ -482,6 +506,8 @@ async function editLho(id) {
         document.getElementById('modal-title').textContent = 'Edit LHO';
         document.getElementById('lho-id').value = lho.id;
         document.getElementById('lho-name').value = lho.lho_name;
+        document.getElementById('lho-to-emails').value = lho.to_emails || '';
+        document.getElementById('lho-cc-emails').value = lho.cc_emails || '';
         document.getElementById('lho-status').value = lho.status;
         
         state.selectedManagers = (lho.managers || []).map(m => ({
@@ -513,6 +539,8 @@ async function saveLho(event) {
     
     const id = document.getElementById('lho-id').value;
     const lhoName = document.getElementById('lho-name').value.trim();
+    const toEmails = document.getElementById('lho-to-emails').value.trim();
+    const ccEmails = document.getElementById('lho-cc-emails').value.trim();
     const status = document.getElementById('lho-status').value;
     const managerIds = state.selectedManagers.map(m => m.id);
     
@@ -526,6 +554,8 @@ async function saveLho(event) {
         const payload = { 
             action: id ? 'update' : 'create', 
             lho_name: lhoName, 
+            to_emails: toEmails,
+            cc_emails: ccEmails,
             status,
             manager_ids: managerIds
         };
@@ -609,11 +639,13 @@ async function exportLhos() {
 function downloadCSV(data, filename) {
     if (!data || data.length === 0) { showError('No data to export'); return; }
     
-    const headers = ['ID', 'LHO Name', 'Managers', 'Status', 'Created At', 'Updated At'];
+    const headers = ['ID', 'LHO Name', 'Managers', 'To Emails', 'Cc Emails', 'Status', 'Created At', 'Updated At'];
     const rows = data.map(lho => [
         lho.id,
         `"${(lho.lho_name || '').replace(/"/g, '""')}"`,
         `"${(lho.managers || '').replace(/"/g, '""')}"`,
+        `"${(lho.to_emails || '').replace(/"/g, '""')}"`,
+        `"${(lho.cc_emails || '').replace(/"/g, '""')}"`,
         lho.status || '',
         lho.created_at || '',
         lho.updated_at || ''

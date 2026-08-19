@@ -237,6 +237,14 @@ function handleCreate($locationService, $authMiddleware, $user, $input) {
         $data['status'] = $input['status'];
     }
     
+    if (isset($input['to_emails'])) {
+        $data['to_emails'] = $input['to_emails'];
+    }
+    
+    if (isset($input['cc_emails'])) {
+        $data['cc_emails'] = $input['cc_emails'];
+    }
+    
     $result = $locationService->createLho($data, $user['id']);
     
     $authMiddleware->logApiAccess($user['id'], '/api/masters/lhos', 'POST', [
@@ -297,6 +305,14 @@ function handleUpdate($locationService, $authMiddleware, $user, $input) {
     
     if (isset($input['status'])) {
         $data['status'] = $input['status'];
+    }
+    
+    if (isset($input['to_emails'])) {
+        $data['to_emails'] = $input['to_emails'];
+    }
+    
+    if (isset($input['cc_emails'])) {
+        $data['cc_emails'] = $input['cc_emails'];
     }
     
     // Check if we have LHO data to update or just manager_ids

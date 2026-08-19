@@ -17,18 +17,7 @@
         </div>
         
         <div class="flex items-center space-x-3">
-            <!-- Connection Status -->
-            <div class="hidden md:flex items-center space-x-2">
-                <span class="connection-status online" id="connection-status">Online</span>
-            </div>
-            
-            <!-- PWA Install Button -->
-            <button id="pwa-install-btn" onclick="installPWA()" 
-                    class="hidden md:flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition text-sm"
-                    title="Install as App">
-                <i class="fas fa-download"></i>
-                <span>Install App</span>
-            </button>
+
             
             <!-- Search (Desktop) -->
             <div class="hidden md:block relative">
@@ -81,15 +70,10 @@
             
             <!-- User Dropdown -->
             <div class="relative" id="userDropdown">
-                <button onclick="toggleDropdown()" class="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-xl transition">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-semibold">
+                <button onclick="toggleDropdown()" class="flex items-center p-1 hover:bg-gray-100 rounded-full transition" title="User Menu">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-semibold shadow-sm">
                         <?php echo strtoupper(substr($currentUser['username'] ?? 'U', 0, 1)); ?>
                     </div>
-                    <div class="hidden md:block text-left">
-                        <p class="text-sm font-medium text-gray-700"><?php echo htmlspecialchars($currentUser['username'] ?? 'User'); ?></p>
-                        <p class="text-xs text-gray-500"><?php echo htmlspecialchars($currentUser['company_name'] ?? ''); ?></p>
-                    </div>
-                    <i class="fas fa-chevron-down text-xs text-gray-400 hidden md:block"></i>
                 </button>
                 
                 <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
