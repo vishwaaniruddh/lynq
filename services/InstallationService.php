@@ -125,13 +125,36 @@ class InstallationService {
         }
         
         try {
+            // Check if site has a delegation record in site_delegations table
+            $contractorId = null;
+            $delegatedBy = null;
+            $delegatedAt = null;
+            
+            try {
+                require_once __DIR__ . '/../repositories/DelegationRepository.php';
+                $delegationRepo = new DelegationRepository();
+                $delegations = $delegationRepo->findBySite($siteId);
+                foreach ($delegations as $del) {
+                    if (in_array($del['status'], ['accepted', 'pending'])) {
+                        $contractorId = (int)$del['contractor_id'];
+                        $delegatedBy = (int)$del['delegated_by'];
+                        $delegatedAt = $del['delegated_at'];
+                        break;
+                    }
+                }
+            } catch (Exception $delEx) {
+                // Ignore if site delegation lookup fails
+            }
+
             // Prepare installation data with site information (Requirement 1.2)
-            // Note: No contractor_id assigned yet - will be set via delegation
             $installationData = [
                 'site_id' => $siteId,
                 'feasibility_id' => $feasibilityId,
                 'initiated_by' => $initiatedBy,
                 'created_by' => $initiatedBy,
+                'contractor_id' => $contractorId,
+                'delegated_by' => $delegatedBy,
+                'delegated_at' => $delegatedAt,
                 // Pre-populate site information
                 'atm_id' => $site['site_name'] ?? '',
                 'address' => $site['address'] ?? '',
@@ -139,8 +162,7 @@ class InstallationService {
                 'location' => $site['address'] ?? '',
                 'lho' => $site['lho'] ?? '',
                 'state' => $site['state'] ?? '',
-                // Set initial status to pending_assignment (no contractor yet)
-                // Requirement 1.4: Create installation record with status "pending_assignment"
+                // Set initial status to pending_assignment
                 'status' => Installation::STATUS_PENDING_ASSIGNMENT
             ];
             

@@ -575,14 +575,21 @@ function renderPendingAcknowledgments(pendingAck) {
             <div class="bg-white rounded-lg p-3 border border-orange-200">
                 <div class="flex items-center justify-between mb-2">
                     <span class="font-medium text-primary text-sm">${escapeHtml(d.dispatch_number)}</span>
-                    <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Pending</span>
+                    <span class="px-2 py-0.5 ${d.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-orange-100 text-orange-700'} rounded text-xs">
+                        ${d.status === 'pending' ? 'Bundle Ready' : 'Pending'}
+                    </span>
                 </div>
                 <p class="text-xs text-gray-600 mb-2">From: ${escapeHtml(d.from_warehouse_name || d.from_company_name || 'ADV')}</p>
                 <p class="text-xs text-gray-400 mb-3">${formatDate(d.dispatch_date)}</p>
-                <button onclick="openAcknowledgeModal(${d.id}, '${escapeHtml(d.dispatch_number)}')" 
-                    class="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition">
-                    <i class="fas fa-camera mr-1"></i>Acknowledge with Proof
-                </button>
+                ${d.status === 'pending'
+                    ? `<div class="w-full px-3 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-medium text-center">
+                        <i class="fas fa-box text-amber-600 mr-1.5"></i>Bundle Ready (Not in Transit)
+                       </div>`
+                    : `<button onclick="openAcknowledgeModal(${d.id}, '${escapeHtml(d.dispatch_number)}')" 
+                        class="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm transition">
+                        <i class="fas fa-camera mr-1"></i>Acknowledge with Proof
+                    </button>`
+                }
             </div>
         `).join('');
     } else {

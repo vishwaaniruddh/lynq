@@ -113,6 +113,17 @@ class PendingReceiveRepository extends BaseRepository {
         $params = [$recipientType, $recipientId];
         $types = 'si';
         
+        // Auto-heal any out-of-sync pending_receives records where dispatch was already acknowledged
+        try {
+            $healSql = "UPDATE pending_receives pr 
+                        INNER JOIN dispatches d ON pr.dispatch_id = d.id 
+                        SET pr.status = 'accepted', pr.accepted_at = COALESCE(d.acknowledged_at, NOW()), pr.accepted_by = d.acknowledged_by 
+                        WHERE pr.status = 'pending' AND d.acknowledgment_status = 'acknowledged'";
+            $this->db->executeQuery($healSql, [], '');
+        } catch (Exception $e) {
+            // Ignore if columns missing or temporary error
+        }
+
         if ($status !== null) {
             if (!self::isValidStatus($status)) {
                 throw new Exception("Invalid status: $status");

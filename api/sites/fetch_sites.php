@@ -39,18 +39,28 @@ try {
     $db = DatabaseConfig::getInstance();
     
     $isAdv = strtoupper($user['company_type'] ?? '') === 'ADV';
+    $companyParam = isset($_GET['company']) ? strtolower(trim($_GET['company'])) : null;
+    $contractorId = isset($_GET['contractor_id']) && (int)$_GET['contractor_id'] > 0 ? (int)$_GET['contractor_id'] : null;
     $companyId = isset($_GET['company_id']) ? (int)$_GET['company_id'] : (int)($user['company_id'] ?? 0);
     
     // Build query to fetch only id and site_name for active sites
-    if ($isAdv && !isset($_GET['company_id'])) {
+    if ($companyParam === 'adv' || ($isAdv && $contractorId === null && !isset($_GET['company_id']))) {
         $sql = "SELECT id, site_name FROM sites WHERE status = 'active' ORDER BY site_name ASC";
         $params = [];
         $types = '';
+    } elseif ($contractorId !== null) {
+        $sql = "SELECT DISTINCT s.id, s.site_name FROM sites s 
+                INNER JOIN site_delegations sd ON s.id = sd.site_id AND sd.status IN ('pending', 'accepted')
+                WHERE s.status = 'active' AND sd.contractor_id = ? 
+                ORDER BY s.site_name ASC";
+        $params = [$contractorId];
+        $types = 'i';
     } else {
         $sql = "SELECT id, site_name FROM sites WHERE status = 'active' AND company_id = ? ORDER BY site_name ASC";
         $params = [$companyId];
         $types = 'i';
     }
+
     
     $sites = $db->getResults($sql, $params, $types);
     

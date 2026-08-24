@@ -123,31 +123,75 @@ ob_start();
             
             <!-- Step 2: Item Selection -->
             <div class="space-y-4 pt-4 border-t">
-                <h4 class="text-md font-semibold text-gray-700 flex items-center">
-                    <span class="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
-                    Select Items to Dispatch
-                </h4>
-                
-                <!-- Inventory Summary -->
-                <div id="inventory-summary" class="bg-gray-50 p-4 rounded-lg">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-sm font-medium text-gray-600">Your Available Inventory</span>
-                        <button type="button" onclick="refreshInventory()" class="text-sm text-primary hover:underline">
-                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                    <h4 class="text-md font-semibold text-gray-700 flex items-center">
+                        <span class="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
+                        Select Items to Dispatch
+                    </h4>
+                    
+                    <!-- Dispatch Mode Switcher -->
+                    <div class="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200">
+                        <button type="button" id="btn-mode-bundle" onclick="setDispatchMode('bundle')" 
+                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center bg-white text-primary shadow-sm">
+                            <i class="fas fa-boxes mr-1.5"></i>Site Material Bundle (Batch)
+                        </button>
+                        <button type="button" id="btn-mode-custom" onclick="setDispatchMode('custom')" 
+                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-list-check mr-1.5"></i>Custom Item Picker
                         </button>
                     </div>
-                    <div id="inventory-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin text-primary"></i>
-                        <span class="ml-2 text-gray-500">Loading inventory...</span>
+                </div>
+
+                <!-- Mode 1: Site Material Bundle Picker -->
+                <div id="bundle-dispatch-section" class="space-y-4">
+                    <div class="bg-blue-50/70 p-4 rounded-xl border border-blue-100 space-y-2">
+                        <label class="block text-xs font-bold text-blue-900 uppercase tracking-wider">Select Site Material Bundle (Received from ADV)</label>
+                        <select id="bundle-site-select" onchange="onSiteBundleSelected(this.value)" class="w-full px-4 py-3 text-xs border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-primary font-medium text-gray-800">
+                            <option value="">-- Choose a Site Material Bundle --</option>
+                        </select>
+                        <p class="text-[11px] text-blue-700"><i class="fas fa-info-circle mr-1"></i>Selecting a site bundle auto-populates all batch materials (router, SIM, rack, cables) dispatched by ADV for installation on that site.</p>
                     </div>
-                    <div id="inventory-empty" class="hidden text-center py-4 text-gray-500">
-                        <i class="fas fa-box-open text-3xl mb-2"></i>
-                        <p>No inventory available for dispatch</p>
+
+                    <!-- Bundle Card Details (hidden until selected) -->
+                    <div id="bundle-details-card" class="hidden bg-white p-4 rounded-xl border border-blue-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <div>
+                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold uppercase tracking-wider">Site Material Batch Ready</span>
+                                <h5 id="bundle-site-title" class="text-sm font-bold text-gray-800 mt-1"></h5>
+                                <p id="bundle-manifest-info" class="text-xs font-mono text-gray-500"></p>
+                            </div>
+                            <button type="button" onclick="selectAllBundleItems()" class="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold shadow-sm hover:bg-blue-700 transition flex items-center">
+                                <i class="fas fa-check-double mr-1.5"></i>Auto-Select Batch Items
+                            </button>
+                        </div>
+
+                        <!-- Bundle Items Table -->
+                        <div id="bundle-items-list" class="space-y-2"></div>
                     </div>
-                    <div id="inventory-list" class="hidden space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+
+                <!-- Mode 2: Custom / Individual Inventory List -->
+                <div id="custom-dispatch-section" class="hidden space-y-4">
+                    <div id="inventory-summary" class="bg-gray-50 p-4 rounded-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-medium text-gray-600">Your Available Inventory</span>
+                            <button type="button" onclick="refreshInventory()" class="text-sm text-primary hover:underline">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="inventory-loading" class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin text-primary"></i>
+                            <span class="ml-2 text-gray-500">Loading inventory...</span>
+                        </div>
+                        <div id="inventory-empty" class="hidden text-center py-4 text-gray-500">
+                            <i class="fas fa-box-open text-3xl mb-2"></i>
+                            <p>No inventory available for dispatch</p>
+                        </div>
+                        <div id="inventory-list" class="hidden space-y-2 max-h-64 overflow-y-auto"></div>
+                    </div>
                 </div>
                 
-                <!-- Selected Items -->
+                <!-- Selected Items Container (Shared for both modes) -->
                 <div id="selected-items-container" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Selected Items for Dispatch</label>
                     <div id="selected-items" class="border rounded-lg divide-y"></div>
@@ -162,13 +206,61 @@ ob_start();
                 </div>
             </div>
             
-            <!-- Step 3: Site & Notes -->
+            <!-- Step 3: Courier POD & Shipping Capture -->
             <div class="space-y-4 pt-4 border-t">
-                <h4 class="text-md font-semibold text-gray-700 flex items-center">
-                    <span class="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">3</span>
-                    Additional Information
+                <h4 class="text-md font-semibold text-gray-700 flex items-center justify-between">
+                    <span class="flex items-center">
+                        <span class="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm mr-2">3</span>
+                        Courier Shipping & POD Capture
+                    </span>
+                    <span class="text-xs text-red-500 font-semibold">* Shipping Details Required</span>
                 </h4>
                 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/80 p-4 rounded-xl border border-gray-200">
+                    <!-- Courier Partner Selection -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Courier Partner / Service <span class="text-red-500">*</span></label>
+                        <select id="courier-select" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary focus:border-transparent font-medium">
+                            <option value="">Loading couriers...</option>
+                        </select>
+                    </div>
+
+                    <!-- LR / POD Waybill / Tracking Number -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">LR / POD / Waybill Number <span class="text-red-500">*</span></label>
+                        <input type="text" id="pod-number-input" placeholder="e.g. LR-88492019 / DTDC12345" 
+                            class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary font-mono">
+                    </div>
+
+                    <!-- Contact Person Name -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Recipient Contact Person Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="contact-name-input" placeholder="e.g. Rajesh Kumar" 
+                            class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary">
+                    </div>
+
+                    <!-- Contact Person Phone -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Recipient Contact Phone <span class="text-red-500">*</span></label>
+                        <input type="tel" id="contact-phone-input" placeholder="e.g. +91 9876543210" 
+                            class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary">
+                    </div>
+
+                    <!-- LR Copy Upload -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1"><i class="fas fa-file-invoice mr-1 text-primary"></i>Upload LR Copy / Courier Receipt <span class="text-red-500">*</span></label>
+                        <input type="file" id="lr-copy-input" accept="image/*,application/pdf" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                        <p id="lr-file-name" class="text-[11px] text-emerald-600 font-semibold mt-1 hidden"><i class="fas fa-check-circle mr-1"></i><span id="lr-file-text"></span></p>
+                    </div>
+
+                    <!-- POD Receipt Document Upload -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1"><i class="fas fa-receipt mr-1 text-emerald-600"></i>Upload Courier POD Receipt Document <span class="text-red-500">*</span></label>
+                        <input type="file" id="pod-receipt-input" accept="image/*,application/pdf" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                        <p id="pod-file-name" class="text-[11px] text-emerald-600 font-semibold mt-1 hidden"><i class="fas fa-check-circle mr-1"></i><span id="pod-file-text"></span></p>
+                    </div>
+                </div>
+
                 <!-- Site Selection -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Site (Optional)</label>
@@ -290,11 +382,14 @@ const URL_DESTINATION = urlParams.get('destination'); // 'engineer' or 'adv'
 <script>
 // State management
 const state = {
+    dispatchMode: 'bundle', // 'bundle' or 'custom'
     destinationType: null,
     selectedEngineerId: null,
     selectedWarehouseId: null,
     selectedSiteId: null,
     inventory: [],
+    siteBundles: [],
+    selectedBundle: null,
     selectedItems: [],
     destinations: { users: [], warehouses: [] },
     sites: [],
@@ -306,8 +401,13 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDestinations();
     loadInventory();
     loadSites();
+    loadSiteBundles();
+    loadCouriers();
     setupEventListeners();
     
+    // Default to Engineer destination for site installation dispatches
+    selectDestinationType('engineer');
+
     // Handle URL parameters for pre-selection
     if (URL_DESTINATION) {
         setTimeout(() => {
@@ -315,6 +415,192 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 });
+
+function setDispatchMode(mode) {
+    state.dispatchMode = mode;
+    
+    const btnBundle = document.getElementById('btn-mode-bundle');
+    const btnCustom = document.getElementById('btn-mode-custom');
+    const secBundle = document.getElementById('bundle-dispatch-section');
+    const secCustom = document.getElementById('custom-dispatch-section');
+    
+    if (mode === 'bundle') {
+        btnBundle.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center bg-white text-primary shadow-sm';
+        btnCustom.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center text-gray-600 hover:text-gray-900';
+        secBundle.classList.remove('hidden');
+        secCustom.classList.add('hidden');
+    } else {
+        btnCustom.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center bg-white text-primary shadow-sm';
+        btnBundle.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg transition flex items-center text-gray-600 hover:text-gray-900';
+        secCustom.classList.remove('hidden');
+        secBundle.classList.add('hidden');
+    }
+}
+
+async function loadSiteBundles() {
+    try {
+        const [recvRes, dashRes] = await Promise.all([
+            fetch(`../../api/inventory/receive/pending.php?view=company`, { credentials: 'include' }),
+            fetch(`../../api/inventory/dashboard/contractor.php`, { credentials: 'include' })
+        ]);
+        
+        const recvData = await recvRes.json();
+        const dashData = await dashRes.json();
+        
+        const outgoingDispatches = (dashData.success && dashData.data?.recent_activity?.recent_dispatches) ? dashData.data.recent_activity.recent_dispatches : [];
+        
+        if (recvData.success && recvData.data.pending_receives) {
+            state.siteBundles = recvData.data.pending_receives
+                .filter(pr => pr.status === 'accepted' && pr.items && pr.items.length > 0)
+                .map(pr => {
+                    const matchOut = outgoingDispatches.find(d => parseInt(d.site_id) === parseInt(pr.site_id) && d.status !== 'cancelled');
+                    if (matchOut) {
+                        pr.is_dispatched = true;
+                        pr.dispatched_to_name = matchOut.to_user_name || matchOut.to_name || 'Engineer';
+                        pr.dispatched_at = matchOut.created_at;
+                    } else {
+                        pr.is_dispatched = false;
+                    }
+                    return pr;
+                });
+            populateSiteBundlesDropdown();
+        }
+    } catch (error) {
+        console.error('Error loading site bundles:', error);
+    }
+}
+
+function populateSiteBundlesDropdown() {
+    const select = document.getElementById('bundle-site-select');
+    select.innerHTML = '<option value="">-- Choose a Site Material Bundle --</option>';
+    
+    if (!state.siteBundles || state.siteBundles.length === 0) {
+        select.innerHTML = '<option value="">No site material bundles available from ADV</option>';
+        return;
+    }
+    
+    state.siteBundles.forEach((b, idx) => {
+        const siteName = b.site_name || 'Site #' + (b.site_id || b.id);
+        const lho = b.lho ? ` (${b.lho})` : '';
+        const city = b.city ? ` - ${b.city}` : '';
+        const manifest = b.dispatch_number || b.manifest_number || 'N/A';
+        const itemCount = b.items ? b.items.length : 0;
+        const statusTag = b.is_dispatched ? ` [✔ DISPATCHED to ${b.dispatched_to_name}]` : ' [READY]';
+        
+        select.innerHTML += `<option value="${idx}">Site: ${siteName}${lho}${city} | Manifest: ${manifest} (${itemCount} items)${statusTag}</option>`;
+    });
+
+    // Auto-select if URL_SITE_ID exists
+    if (URL_SITE_ID) {
+        const matchIdx = state.siteBundles.findIndex(b => parseInt(b.site_id) === URL_SITE_ID);
+        if (matchIdx >= 0) {
+            select.value = matchIdx;
+            onSiteBundleSelected(matchIdx);
+        }
+    }
+}
+
+function onSiteBundleSelected(bundleIdxStr) {
+    if (bundleIdxStr === '' || bundleIdxStr === null) {
+        state.selectedBundle = null;
+        document.getElementById('bundle-details-card').classList.add('hidden');
+        state.selectedItems = [];
+        renderSelectedItems();
+        updateSubmitButton();
+        updateSummary();
+        return;
+    }
+    
+    const idx = parseInt(bundleIdxStr);
+    const bundle = state.siteBundles[idx];
+    if (!bundle) return;
+    
+    state.selectedBundle = bundle;
+    
+    // Auto-select site in Step 3
+    if (bundle.site_id) {
+        state.selectedSiteId = parseInt(bundle.site_id);
+        const siteSelect = document.getElementById('site-select');
+        if (siteSelect) siteSelect.value = bundle.site_id;
+    }
+    
+    // Auto-select engineer if assigned in site delegations
+    if (bundle.site_id && state.sites && state.sites.length > 0) {
+        const del = state.sites.find(s => parseInt(s.site_id) === parseInt(bundle.site_id));
+        if (del && del.assigned_engineer_id) {
+            const engSelect = document.getElementById('engineer-select');
+            if (engSelect) {
+                engSelect.value = del.assigned_engineer_id;
+                state.selectedEngineerId = parseInt(del.assigned_engineer_id);
+            }
+        }
+    }
+    
+    // Update bundle card UI
+    document.getElementById('bundle-site-title').textContent = `${bundle.site_name || 'Site #' + bundle.site_id} (${bundle.lho || 'N/A'}, ${bundle.city || 'N/A'})`;
+    document.getElementById('bundle-manifest-info').textContent = `ADV Manifest: ${bundle.dispatch_number || 'N/A'} | Received Date: ${bundle.acknowledged_at ? new Date(bundle.acknowledged_at).toLocaleDateString() : 'N/A'}`;
+    
+    // Render bundle status notice if already dispatched
+    const statusBannerHtml = bundle.is_dispatched 
+        ? `<div class="p-3 bg-purple-50 border border-purple-200 text-purple-800 rounded-xl text-xs font-semibold flex items-center justify-between">
+                <span><i class="fas fa-check-circle text-purple-600 text-sm mr-2"></i>Material bundle for this site was ALREADY dispatched to Engineer (${bundle.dispatched_to_name}).</span>
+                <span class="px-2 py-0.5 bg-purple-200 text-purple-900 rounded font-bold text-[10px]">DISPATCHED</span>
+           </div>`
+        : '';
+
+    // Render bundle items summary
+    const itemsListEl = document.getElementById('bundle-items-list');
+    itemsListEl.innerHTML = statusBannerHtml + bundle.items.map(item => {
+        const serials = item.serial_numbers && item.serial_numbers.length > 0
+            ? `<div class="mt-1 flex flex-wrap gap-1">${item.serial_numbers.map(s => `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-mono text-[10px] rounded">${s}</span>`).join('')}</div>`
+            : '';
+        return `
+            <div class="p-2.5 bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="font-semibold text-gray-800 text-xs">${item.product_name || 'Product #' + item.product_id}</p>
+                    <p class="text-[11px] text-gray-500">Qty: ${item.received_quantity || item.expected_quantity || 1}</p>
+                    ${serials}
+                </div>
+                <span class="px-2 py-1 ${bundle.is_dispatched ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} font-semibold rounded text-[10px]">
+                    ${bundle.is_dispatched ? 'Dispatched' : 'Batch Item'}
+                </span>
+            </div>`;
+    }).join('');
+    
+    document.getElementById('bundle-details-card').classList.remove('hidden');
+    
+    // Auto-select all items from bundle into payload
+    selectAllBundleItems();
+}
+
+function selectAllBundleItems() {
+    if (!state.selectedBundle || !state.selectedBundle.items) return;
+    
+    state.selectedItems = [];
+    
+    state.selectedBundle.items.forEach(item => {
+        const productId = parseInt(item.product_id);
+        const quantity = parseInt(item.received_quantity || item.expected_quantity || 1);
+        
+        // Find matching inventory item to get available stock
+        const invItem = state.inventory.find(i => parseInt(i.product_id) === productId);
+        const availQty = invItem ? invItem.available_quantity : quantity;
+        
+        state.selectedItems.push({
+            product_id: productId,
+            product_name: item.product_name || 'Product #' + productId,
+            quantity: Math.min(quantity, availQty),
+            available_quantity: availQty,
+            is_serializable: item.serial_numbers && item.serial_numbers.length > 0,
+            serial_numbers: item.serial_numbers || []
+        });
+    });
+    
+    renderSelectedItems();
+    updateSubmitButton();
+    updateSummary();
+    showToast(`Batch bundle auto-selected (${state.selectedItems.length} products ready for dispatch)`, 'info');
+}
 
 function setupEventListeners() {
     // Destination type selection
@@ -917,40 +1203,122 @@ function closeConfirmModal() {
     document.getElementById('confirm-modal').classList.add('hidden');
 }
 
+async function loadCouriers() {
+    try {
+        const response = await fetch(`../../api/inventory/dispatch/couriers.php`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        const select = document.getElementById('courier-select');
+        select.innerHTML = '<option value="">-- Select Courier Partner --</option>';
+        
+        if (result.success && result.data && result.data.couriers && result.data.couriers.length > 0) {
+            state.couriers = result.data.couriers;
+            result.data.couriers.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading couriers:', error);
+    }
+}
+
+// File Upload Preview Handlers
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.id === 'lr-copy-input') {
+        const label = document.getElementById('lr-file-name');
+        const text = document.getElementById('lr-file-text');
+        if (e.target.files.length > 0) {
+            text.textContent = 'Selected: ' + e.target.files[0].name;
+            label.classList.remove('hidden');
+        } else {
+            label.classList.add('hidden');
+        }
+    }
+    if (e.target && e.target.id === 'pod-receipt-input') {
+        const label = document.getElementById('pod-file-name');
+        const text = document.getElementById('pod-file-text');
+        if (e.target.files.length > 0) {
+            text.textContent = 'Selected: ' + e.target.files[0].name;
+            label.classList.remove('hidden');
+        } else {
+            label.classList.add('hidden');
+        }
+    }
+});
+
 async function submitDispatch() {
+    const courierId = document.getElementById('courier-select').value;
+    const podNumber = document.getElementById('pod-number-input').value.trim();
+    const contactName = document.getElementById('contact-name-input').value.trim();
+    const contactPhone = document.getElementById('contact-phone-input').value.trim();
+    const lrFileInput = document.getElementById('lr-copy-input');
+    const podFileInput = document.getElementById('pod-receipt-input');
+
+    if (!courierId) {
+        showToast('Please select a courier partner', 'error');
+        return;
+    }
+    if (!podNumber) {
+        showToast('Please enter LR / POD / Waybill number', 'error');
+        return;
+    }
+    if (!contactName || !contactPhone) {
+        showToast('Please enter recipient contact name and phone number', 'error');
+        return;
+    }
+    if (!lrFileInput || lrFileInput.files.length === 0) {
+        showToast('Please upload LR Copy / Courier Receipt file', 'error');
+        return;
+    }
+    if (!podFileInput || podFileInput.files.length === 0) {
+        showToast('Please upload Courier POD Receipt file', 'error');
+        return;
+    }
+
     const btn = document.getElementById('confirm-submit-btn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading POD & Creating Dispatch...';
     
     try {
-        // Build dispatch data
-        const dispatchData = {
-            notes: document.getElementById('dispatch-notes').value || null,
-            site_id: state.selectedSiteId || null
-        };
+        const formData = new FormData();
+        formData.append('sender_type', 'company');
+        formData.append('sender_id', state.companyId);
         
         if (state.destinationType === 'engineer') {
-            dispatchData.to_user_id = state.selectedEngineerId;
+            formData.append('to_user_id', state.selectedEngineerId);
         } else {
-            dispatchData.to_warehouse_id = state.selectedWarehouseId;
+            formData.append('to_warehouse_id', state.selectedWarehouseId);
         }
         
-        // Build items array
+        if (state.selectedSiteId) {
+            formData.append('site_id', state.selectedSiteId);
+        }
+        
+        formData.append('courier_id', courierId);
+        formData.append('pod_number', podNumber);
+        formData.append('contact_person_name', contactName);
+        formData.append('contact_person_phone', contactPhone);
+        formData.append('notes', document.getElementById('dispatch-notes').value || '');
+        
         const items = state.selectedItems.map(item => ({
             product_id: item.product_id,
             quantity: item.quantity
         }));
-        
+        formData.append('items', JSON.stringify(items));
+
+        if (lrFileInput.files.length > 0) {
+            formData.append('lr_copy', lrFileInput.files[0]);
+        }
+        if (podFileInput.files.length > 0) {
+            formData.append('pod_receipt', podFileInput.files[0]);
+        }
+
         const response = await fetch('../../api/inventory/dispatch/create.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({
-                sender_type: 'company',
-                sender_id: state.companyId,
-                ...dispatchData,
-                items: items
-            })
+            body: formData
         });
         
         const result = await response.json();

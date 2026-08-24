@@ -4,9 +4,9 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5 - Draggable, resizable notepad popup
  */
 ?>
-<!-- Notes FAB (Floating Action Button) -->
-<button id="notesFab" onclick="NotesManager.toggle()" 
-        class="fixed bottom-[72px] right-4 md:bottom-24 md:right-6 z-40 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+<!-- Notes FAB (Floating Action Button) - Hidden -->
+<button id="notesFab" onclick="NotesManager.toggle()" style="display: none !important;"
+        class="hidden fixed bottom-[72px] right-4 md:bottom-24 md:right-6 z-40 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 items-center justify-center group"
         title="My Notes">
     <i class="fas fa-sticky-note text-lg md:text-xl group-hover:scale-110 transition-transform"></i>
 </button>

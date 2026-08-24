@@ -473,6 +473,53 @@ class DispatchService {
                 $this->dispatchRepository->updateStatus($dispatchId, DispatchRepository::STATUS_DELIVERED);
             }
             
+            // Sync pending_receives record so pending-receives.php is also updated
+            try {
+                $pendingReceive = $this->pendingReceiveRepository->findByDispatch($dispatchId);
+                if ($pendingReceive && $pendingReceive['status'] === PendingReceiveRepository::STATUS_PENDING) {
+                    $this->pendingReceiveItemRepository->acceptAllForPendingReceive($pendingReceive['id']);
+                    $this->pendingReceiveRepository->accept($pendingReceive['id'], $userId);
+                    
+                    // Increment recipient's inventory counter and update asset holder
+                    $recipientType = $pendingReceive['recipient_type'];
+                    $recipientId = $pendingReceive['recipient_id'];
+                    $dispatchItems = $this->dispatchItemRepository->findAllByDispatchWithDetails($dispatchId);
+                    
+                    foreach ($dispatchItems as $item) {
+                        $productId = $item['product_id'];
+                        $quantity = $item['quantity'];
+                        $assetId = $item['asset_id'];
+                        
+                        $this->inventoryCounterService->incrementCounter(
+                            $recipientType,
+                            $recipientId,
+                            $productId,
+                            $quantity,
+                            $userId,
+                            'receive_acknowledged'
+                        );
+                        
+                        if ($assetId) {
+                            $updateData = [
+                                'current_holder_type' => $recipientType,
+                                'current_holder_id' => $recipientId,
+                                'updated_by' => $userId
+                            ];
+                            if ($recipientType === 'warehouse') {
+                                $updateData['status'] = AssetRepository::STATUS_IN_STOCK;
+                                $updateData['warehouse_id'] = $recipientId;
+                            } else {
+                                $updateData['status'] = AssetRepository::STATUS_ASSIGNED;
+                                $updateData['warehouse_id'] = null;
+                            }
+                            $this->assetRepository->update($assetId, $updateData);
+                        }
+                    }
+                }
+            } catch (Exception $syncEx) {
+                error_log("Failed to sync pending_receives on acknowledge: " . $syncEx->getMessage());
+            }
+            
             $this->logAuditEntry('dispatch_acknowledged', 'dispatch', $dispatchId, $userId,
                 null, null, null, null,
                 [
@@ -906,7 +953,7 @@ class DispatchService {
             // Create dispatch record
             $dispatch = $this->dispatchRepository->create($dispatchCreateData);
             
-            // Create dispatch items
+            // Create dispatch items & update asset status/holder
             $createdItems = [];
             foreach ($items as $item) {
                 $createdItem = $this->createDispatchItem($dispatch['id'], $item);
@@ -914,7 +961,34 @@ class DispatchService {
                     $this->conn->rollback();
                     return $createdItem;
                 }
-                $createdItems[] = $createdItem['data'];
+                $itemData = $createdItem['data'];
+                $createdItems[] = $itemData;
+
+                // Update asset holder and status if asset_id exists or product is serializable
+                if (!empty($itemData['asset_id'])) {
+                    $this->assetRepository->update($itemData['asset_id'], [
+                        'status' => AssetRepository::STATUS_DISPATCHED,
+                        'current_holder_type' => $recipientType,
+                        'current_holder_id' => $recipientId,
+                    ]);
+                } else {
+                    $product = $this->productRepository->find($item['product_id']);
+                    if ($product && !empty($product['is_serializable'])) {
+                        $holderAssets = $this->assetRepository->findAll([
+                            'product_id' => $item['product_id'],
+                            'current_holder_type' => $senderType,
+                            'current_holder_id' => $senderId
+                        ]);
+                        $qtyToUpdate = $item['quantity'] ?? 1;
+                        for ($i = 0; $i < min($qtyToUpdate, count($holderAssets)); $i++) {
+                            $this->assetRepository->update($holderAssets[$i]['id'], [
+                                'status' => AssetRepository::STATUS_DISPATCHED,
+                                'current_holder_type' => $recipientType,
+                                'current_holder_id' => $recipientId,
+                            ]);
+                        }
+                    }
+                }
             }
             
             // Deduct from sender's inventory counter immediately

@@ -69,7 +69,7 @@ ob_start();
                         <i class="fas fa-inbox text-blue-500"></i>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500">All Pending</p>
+                        <p class="text-sm text-gray-500">All Receives</p>
                         <p id="total-count" class="text-xl font-semibold text-gray-800">0</p>
                     </div>
                 </div>

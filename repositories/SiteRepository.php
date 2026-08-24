@@ -81,9 +81,9 @@ class SiteRepository extends BaseRepository {
         if ($this->applyCompanyFilter && $this->currentUserId && $this->companyIdColumn) {
             $filter = $this->companyIsolationService->getCompanyFilterClause(
                 $this->currentUserId, 
-                $this->companyIdColumn
+                's.' . $this->companyIdColumn
             );
-            $sql .= " AND s." . $filter['clause'];
+            $sql .= " AND " . $filter['clause'];
             $params = array_merge($params, $filter['params']);
             $types .= $filter['types'];
         }
@@ -113,9 +113,20 @@ class SiteRepository extends BaseRepository {
         $orderBy = $filters['orderBy'] ?? 'site_name';
         $orderDir = strtoupper($filters['orderDir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
         
-        $whereClause = ["s.`company_id` = ?", "s.`status` != 'deleted'"];
-        $params = [$companyId];
-        $types = 'i';
+        $whereClause = ["s.`status` != 'deleted'"];
+        $params = [];
+        $types = '';
+
+        if (!empty($filters['contractor_id'])) {
+            $whereClause[] = "sd.`contractor_id` = ?";
+            $params[] = (int)$filters['contractor_id'];
+            $types .= 'i';
+        } else {
+            $whereClause[] = "s.`company_id` = ?";
+            $params[] = (int)$companyId;
+            $types .= 'i';
+        }
+
         
         // Status filter
         if (isset($filters['status']) && $filters['status'] !== '') {
@@ -191,16 +202,20 @@ class SiteRepository extends BaseRepository {
                     LEFT JOIN `users` u_del ON sd.delegated_by = u_del.id
                     LEFT JOIN `users` u_resp ON sd.responded_by = u_resp.id
                     LEFT JOIN `feasibility_checks` fc ON s.id = fc.site_id
+                    LEFT JOIN `engineer_assignments` ea ON sd.id = ea.delegation_id
+                    LEFT JOIN `users` u_surv ON (fc.created_by = u_surv.id OR ea.engineer_id = u_surv.id)
                     LEFT JOIN `installations` inst ON s.id = inst.site_id
+                    LEFT JOIN `companies` c_inst ON inst.contractor_id = c_inst.id
+                    LEFT JOIN `users` u_inst ON (inst.assigned_engineer_id = u_inst.id OR inst.submitted_by = u_inst.id)
                     LEFT JOIN `material_requests` mr ON s.id = mr.site_id
-                    LEFT JOIN `engineer_assignments` ea ON sd.id = ea.delegation_id";
+                    LEFT JOIN `dispatches` disp_mat ON s.id = disp_mat.site_id AND disp_mat.status != 'cancelled'";
         
         // Get total count
         $countSQL = "SELECT COUNT(DISTINCT s.id) as total FROM `{$this->table}` s" . $joinSQL . $whereSQL;
         $countResult = $this->db->getResults($countSQL, $params, $types);
         $total = (int)($countResult[0]['total'] ?? 0);
         
-        // Get paginated data with delegation status, feasibility status, and mapped router details
+        // Get paginated data with delegation status, feasibility status, material details, and mapped router details
         $dataSQL = "SELECT s.*, 
                     l.to_emails as lho_to_emails,
                     l.cc_emails as lho_cc_emails,
@@ -217,9 +232,23 @@ class SiteRepository extends BaseRepository {
                     sd.responded_at,
                     fc.id as feasibility_check_id,
                     fc.approval_status as feasibility_approval_status,
+                    fc.created_at as feasibility_created_at,
+                    CONCAT(u_surv.first_name, ' ', u_surv.last_name) as surveyor_name,
                     ea.feasibility_status,
+                    mr.id as material_request_id,
+                    CONCAT('REQ-', LPAD(mr.id, 6, '0')) as material_req_number,
+                    mr.status as material_req_status,
+                    disp_mat.dispatch_number as manifest_number,
+                    disp_mat.status as dispatch_status,
+                    disp_mat.dispatch_date as dispatch_date,
+                    disp_mat.acknowledged_at as delivery_date,
                     inst.id as installation_id,
                     inst.status as installation_status,
+                    inst.contractor_id as inst_contractor_id,
+                    c_inst.name as inst_contractor_name,
+                    inst.delegated_at as inst_delegated_at,
+                    inst.submitted_at as installation_completed_at,
+                    CONCAT(u_inst.first_name, ' ', u_inst.last_name) as installer_name,
                     COALESCE(r_direct.router_serial_number, r_dispatch.router_serial_number) as router_serial_number,
                     COALESCE(r_direct.router_ip, r_dispatch.router_ip) as router_ip,
                     COALESCE(r_direct.network_ip, r_dispatch.network_ip) as network_ip,

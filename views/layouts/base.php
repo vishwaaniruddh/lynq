@@ -255,7 +255,7 @@
                     }
                 });
             }
-        }    
+            
             // Handle install prompt
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();

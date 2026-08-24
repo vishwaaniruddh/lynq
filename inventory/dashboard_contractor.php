@@ -671,16 +671,23 @@ function renderPendingAcknowledgments() {
     container.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             ${items.map(d => `
-                <div class="p-4 border rounded-lg hover:shadow-md transition border-orange-200 bg-orange-50">
+                <div class="p-4 border rounded-lg hover:shadow-md transition ${d.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-orange-200 bg-orange-50'}">
                     <div class="flex items-center justify-between mb-2">
                         <span class="font-medium text-primary">${escapeHtml(d.dispatch_number)}</span>
-                        <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">Pending</span>
+                        <span class="px-2 py-1 ${d.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-orange-100 text-orange-700'} rounded-full text-xs">
+                            ${d.status === 'pending' ? 'Bundle Ready' : 'Pending'}
+                        </span>
                     </div>
                     <p class="text-sm text-gray-600">From: ${escapeHtml(d.from_warehouse_name || d.from_company_name || '-')}</p>
                     <p class="text-xs text-gray-400 mt-1">${formatDate(d.dispatch_date)}</p>
-                    <button onclick="acknowledgeDispatch(${d.id})" class="mt-3 w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
-                        <i class="fas fa-check mr-1"></i>Acknowledge
-                    </button>
+                    ${d.status === 'pending'
+                        ? `<div class="mt-3 w-full px-3 py-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-lg text-xs font-medium text-center">
+                            <i class="fas fa-box text-amber-600 mr-1.5"></i>Bundle Ready (Not in Transit)
+                           </div>`
+                        : `<button onclick="acknowledgeDispatch(${d.id})" class="mt-3 w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                            <i class="fas fa-check mr-1"></i>Acknowledge
+                        </button>`
+                    }
                 </div>
             `).join('')}
         </div>

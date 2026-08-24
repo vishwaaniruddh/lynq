@@ -43,8 +43,12 @@ try {
     // Check rate limiting
     $authMiddleware->checkRateLimit();
     
-    // Require ADV user access for site management
-    $user = $authMiddleware->requireAdvUser();
+    // Require authentication for GET (site listing), ADV access for POST
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $user = $authMiddleware->requireAuth();
+    } else {
+        $user = $authMiddleware->requireAdvUser();
+    }
     
     $siteService = new SiteService();
     
@@ -72,6 +76,9 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
     $delegation = isset($_GET['delegation']) ? $_GET['delegation'] : null;
     $material = isset($_GET['material']) ? $_GET['material'] : null;
     $installation = isset($_GET['installation']) ? $_GET['installation'] : null;
+    $contractorId = isset($_GET['contractor_id']) && (int)$_GET['contractor_id'] > 0 ? (int)$_GET['contractor_id'] : null;
+    $companyParam = isset($_GET['company']) ? strtolower(trim($_GET['company'])) : null;
+    
     $page = max(1, (int)($_GET['page'] ?? 1));
     $limit = min(100, max(1, (int)($_GET['limit'] ?? 20)));
     $orderBy = $_GET['orderBy'] ?? 'site_name';
@@ -84,6 +91,18 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
         'orderBy' => $orderBy,
         'orderDir' => $orderDir
     ];
+
+    // Determine company mode (company=adv vs contractor_id filter)
+    if ($companyParam === 'adv') {
+        // Fetch all ADV company sites
+        unset($filters['contractor_id']);
+    } elseif ($contractorId !== null) {
+        // Explicit contractor_id passed -> fetch only assigned sites for that contractor
+        $filters['contractor_id'] = $contractorId;
+    } elseif (!isAdvUser()) {
+        // Logged in contractor user -> fetch only assigned sites for their company
+        $filters['contractor_id'] = (int)$user['company_id'];
+    }
     
     if ($search !== null && $search !== '') {
         $filters['search'] = $search;
@@ -112,6 +131,7 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
     if ($installation !== null && $installation !== '') {
         $filters['installation'] = $installation;
     }
+
     
     // Handle export mode
     if ($export) {

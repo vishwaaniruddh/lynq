@@ -429,7 +429,7 @@ function getPendingAcknowledgments($db, $companyId) {
             LEFT JOIN companies fc ON d.from_company_id = fc.id
             WHERE d.to_company_id = ?
             AND d.acknowledgment_status = 'pending'
-            AND d.status = 'delivered'
+            AND d.status IN ('delivered', 'in_transit', 'pending')
             ORDER BY d.dispatch_date DESC";
     
     return $db->getResults($sql, [$companyId], 'i');
@@ -440,6 +440,47 @@ function getPendingAcknowledgments($db, $companyId) {
  * Requirements: 8.2 - Show current inventory by product
  */
 function getInventoryCounters($inventoryCounterService, $companyId) {
+    $db = DatabaseConfig::getInstance();
+    
+    // Auto-sync contractor inventory counters for net stock (incoming minus outgoing dispatches)
+    try {
+        $syncSql = "SELECT 
+                        di.product_id, 
+                        SUM(CASE WHEN d.to_company_id = ? AND (d.acknowledgment_status = 'acknowledged' OR d.status = 'delivered') THEN di.quantity ELSE 0 END) as total_in,
+                        SUM(CASE WHEN d.from_company_id = ? AND d.status != 'cancelled' THEN di.quantity ELSE 0 END) as total_out
+                    FROM dispatches d
+                    JOIN dispatch_items di ON di.dispatch_id = d.id
+                    WHERE d.to_company_id = ? OR d.from_company_id = ?
+                    GROUP BY di.product_id";
+        $counterSummary = $db->getResults($syncSql, [$companyId, $companyId, $companyId, $companyId], 'iiii');
+        
+        foreach ($counterSummary as $item) {
+            $productId = (int)$item['product_id'];
+            $netQty = max(0, (int)$item['total_in'] - (int)$item['total_out']);
+            
+            $counterSql = "SELECT id, quantity FROM inventory_counters WHERE entity_type = 'company' AND entity_id = ? AND product_id = ?";
+            $existing = $db->getResults($counterSql, [$companyId, $productId], 'ii');
+            
+            if (empty($existing)) {
+                if ($netQty > 0) {
+                    $inventoryCounterService->incrementCounter('company', $companyId, $productId, $netQty, null, 'auto_sync_net');
+                }
+            } else {
+                $currQty = (int)$existing[0]['quantity'];
+                if ($currQty != $netQty) {
+                    $diff = $netQty - $currQty;
+                    if ($diff > 0) {
+                        $inventoryCounterService->incrementCounter('company', $companyId, $productId, $diff, null, 'auto_sync_net');
+                    } else if ($diff < 0) {
+                        $inventoryCounterService->decrementCounter('company', $companyId, $productId, abs($diff), null, 'auto_sync_net');
+                    }
+                }
+            }
+        }
+    } catch (Exception $syncEx) {
+        error_log("Auto sync counters error: " . $syncEx->getMessage());
+    }
+
     $result = $inventoryCounterService->getAllCounters('company', $companyId);
     if ($result['success']) {
         // The data is returned directly, not nested under 'counters'

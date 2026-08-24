@@ -145,6 +145,33 @@ try {
             ApiResponse::validationError($errors);
         }
         
+        // Handle file uploads if multipart
+        $lrCopyPath = null;
+        $podReceiptPath = null;
+        $uploadDir = __DIR__ . '/../../../uploads/dispatches/';
+        
+        if ($isMultipart) {
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            if (isset($_FILES['lr_copy']) && $_FILES['lr_copy']['error'] === UPLOAD_ERR_OK) {
+                $lrFile = $_FILES['lr_copy'];
+                $lrExt = pathinfo($lrFile['name'], PATHINFO_EXTENSION);
+                $lrFilename = 'lr_' . uniqid() . '_' . time() . '.' . $lrExt;
+                if (move_uploaded_file($lrFile['tmp_name'], $uploadDir . $lrFilename)) {
+                    $lrCopyPath = 'uploads/dispatches/' . $lrFilename;
+                }
+            }
+            if (isset($_FILES['pod_receipt']) && $_FILES['pod_receipt']['error'] === UPLOAD_ERR_OK) {
+                $podFile = $_FILES['pod_receipt'];
+                $podExt = pathinfo($podFile['name'], PATHINFO_EXTENSION);
+                $podFilename = 'pod_' . uniqid() . '_' . time() . '.' . $podExt;
+                if (move_uploaded_file($podFile['tmp_name'], $uploadDir . $podFilename)) {
+                    $podReceiptPath = 'uploads/dispatches/' . $podFilename;
+                }
+            }
+        }
+
         // Prepare dispatch data
         $dispatchData = [
             'to_company_id' => !empty($input['to_company_id']) ? (int)$input['to_company_id'] : null,
@@ -152,7 +179,13 @@ try {
             'to_warehouse_id' => !empty($input['to_warehouse_id']) ? (int)$input['to_warehouse_id'] : null,
             'site_id' => !empty($input['site_id']) ? (int)$input['site_id'] : null,
             'dispatch_date' => $input['dispatch_date'] ?? date('Y-m-d'),
-            'notes' => $input['notes'] ?? null
+            'courier_id' => !empty($input['courier_id']) ? (int)$input['courier_id'] : null,
+            'pod_number' => !empty($input['pod_number']) ? trim($input['pod_number']) : null,
+            'contact_person_name' => !empty($input['contact_person_name']) ? trim($input['contact_person_name']) : null,
+            'contact_person_phone' => !empty($input['contact_person_phone']) ? trim($input['contact_person_phone']) : null,
+            'notes' => $input['notes'] ?? null,
+            'lr_copy_path' => $lrCopyPath ?? ($input['lr_copy_path'] ?? null),
+            'pod_receipt_path' => $podReceiptPath ?? ($input['pod_receipt_path'] ?? null)
         ];
         
         // Create dispatch using appropriate method

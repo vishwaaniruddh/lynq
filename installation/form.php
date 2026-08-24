@@ -841,9 +841,10 @@ async function loadInstallation() {
         const data = await response.json();
         
         if (data.success) {
-            state.installation = data.data;
-            populateForm(data.data);
-            updateUIState(data.data);
+            const instData = data.data.installation || data.data;
+            state.installation = instData;
+            populateForm(instData);
+            updateUIState(instData);
         } else {
             showError(data.message || 'Failed to load installation');
         }
@@ -1266,12 +1267,24 @@ async function submitForm() {
 // Get form data
 function getFormData() {
     const form = document.getElementById('installation-form');
-    const formData = new FormData(form);
+    if (!form) return {};
     const data = {};
     
-    for (let [key, value] of formData.entries()) {
-        data[key] = value;
-    }
+    const elements = form.querySelectorAll('input[name], select[name], textarea[name]');
+    elements.forEach(el => {
+        const name = el.name;
+        if (!name) return;
+        
+        if (el.type === 'checkbox') {
+            data[name] = el.checked ? (el.value || '1') : '0';
+        } else if (el.type === 'radio') {
+            if (el.checked) {
+                data[name] = el.value;
+            }
+        } else if (el.type !== 'file') {
+            data[name] = el.value;
+        }
+    });
     
     return data;
 }
@@ -1384,9 +1397,9 @@ function initSignatureCanvas() {
     state.signatureCanvas = canvas;
     state.signatureCtx = canvas.getContext('2d');
     
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    // Set canvas size with fallback if hidden
+    canvas.width = canvas.offsetWidth || 500;
+    canvas.height = canvas.offsetHeight || 150;
     
     // Drawing events
     canvas.addEventListener('mousedown', startDrawing);
@@ -1401,13 +1414,14 @@ function initSignatureCanvas() {
 }
 
 function startDrawing(e) {
+    if (!state.signatureCtx) return;
     state.isDrawing = true;
     state.signatureCtx.beginPath();
     state.signatureCtx.moveTo(e.offsetX, e.offsetY);
 }
 
 function draw(e) {
-    if (!state.isDrawing) return;
+    if (!state.isDrawing || !state.signatureCtx) return;
     state.signatureCtx.lineTo(e.offsetX, e.offsetY);
     state.signatureCtx.stroke();
 }
@@ -1418,6 +1432,7 @@ function stopDrawing() {
 
 function handleTouchStart(e) {
     e.preventDefault();
+    if (!state.signatureCanvas) return;
     const touch = e.touches[0];
     const rect = state.signatureCanvas.getBoundingClientRect();
     startDrawing({ offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top });
@@ -1425,28 +1440,45 @@ function handleTouchStart(e) {
 
 function handleTouchMove(e) {
     e.preventDefault();
+    if (!state.signatureCanvas) return;
     const touch = e.touches[0];
     const rect = state.signatureCanvas.getBoundingClientRect();
     draw({ offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top });
 }
 
 function clearSignature() {
-    state.signatureCtx.clearRect(0, 0, state.signatureCanvas.width, state.signatureCanvas.height);
-    document.getElementById('signature_image').value = '';
+    if (state.signatureCanvas && state.signatureCtx) {
+        const width = state.signatureCanvas.width || 500;
+        const height = state.signatureCanvas.height || 150;
+        state.signatureCtx.clearRect(0, 0, width, height);
+    }
+    const field = document.getElementById('signature_image');
+    if (field) field.value = '';
 }
 
 function saveSignatureToField() {
     const canvas = state.signatureCanvas;
-    if (!canvas) return;
-    
-    // Check if canvas has content
-    const ctx = state.signatureCtx;
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hasContent = imageData.data.some((value, index) => index % 4 === 3 && value > 0);
-    
-    if (hasContent) {
-        const dataUrl = canvas.toDataURL('image/png');
-        document.getElementById('signature_image').value = dataUrl;
+    if (!canvas || !state.signatureCtx) return;
+
+    // Fix IndexSizeError: ensure canvas width & height are > 0
+    let width = canvas.width || canvas.offsetWidth || 500;
+    let height = canvas.height || canvas.offsetHeight || 150;
+
+    if (width <= 0) width = 500;
+    if (height <= 0) height = 150;
+
+    try {
+        const ctx = state.signatureCtx;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const hasContent = imageData.data.some((value, index) => index % 4 === 3 && value > 0);
+        
+        if (hasContent) {
+            const dataUrl = canvas.toDataURL('image/png');
+            const field = document.getElementById('signature_image');
+            if (field) field.value = dataUrl;
+        }
+    } catch (e) {
+        console.warn('Could not read signature canvas:', e);
     }
 }
 

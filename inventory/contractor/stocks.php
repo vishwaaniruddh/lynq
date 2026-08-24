@@ -492,7 +492,8 @@ async function loadStocks() {
             state.allAssets = data.received_inventory?.items || [];
             const pendingAck = data.recent_activity?.pending_acknowledgments || {};
             state.dispatches = data.recent_activity?.recent_dispatches || [];
-            state.recentDispatches = state.dispatches;
+            // Recent Received card: Only include dispatches that have actually been delivered or acknowledged
+            state.recentDispatches = state.dispatches.filter(d => d.status === 'delivered' || d.acknowledgment_status === 'acknowledged');
             state.pendingAckItems = pendingAck.items || [];
             
             // Get inventory counters (includes both serializable and non-serializable)
@@ -538,7 +539,7 @@ async function loadStocks() {
             
             state.counts.total = state.productStock.length;
             state.counts.recent_received = state.recentDispatches.length;
-            state.counts.pending_ack = pendingAck.count || 0;
+            state.counts.pending_ack = state.pendingAckItems.length;
             state.counts.dispatched = totalWithEngineers;
             state.counts.faulty = state.allAssets.filter(a => a.working_condition === 'not_working').length;
             
@@ -795,10 +796,15 @@ function renderPendingAckTable(items) {
             </td>
             <td class="px-4 py-2.5 text-xs text-gray-600">${formatDate(dispatch.dispatch_date)}</td>
             <td class="px-4 py-2.5">
-                <button onclick="openAcknowledgeModal(${dispatch.id}, '${escapeHtml(dispatch.dispatch_number)}')" 
-                    class="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-[10px] transition">
-                    <i class="fas fa-check mr-1"></i>Acknowledge
-                </button>
+                ${dispatch.status === 'pending' 
+                    ? `<span class="inline-flex items-center px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[10px] font-medium" title="Product bundle is ready, but not yet in transit">
+                        <i class="fas fa-box text-amber-600 mr-1.5 text-xs"></i>Bundle Ready (Not in Transit)
+                       </span>`
+                    : `<button onclick="openAcknowledgeModal(${dispatch.id}, '${escapeHtml(dispatch.dispatch_number)}')" 
+                        class="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-[10px] transition">
+                        <i class="fas fa-check mr-1"></i>Acknowledge
+                    </button>`
+                }
             </td>
         </tr>
     `).join('');
@@ -865,10 +871,14 @@ function renderRecentReceivedTable(dispatches) {
             <td class="px-4 py-2.5 text-xs text-gray-600">${formatDate(dispatch.dispatch_date)}</td>
             <td class="px-4 py-2.5">
                 ${dispatch.acknowledgment_status !== 'acknowledged' 
-                    ? `<button onclick="openAcknowledgeModal(${dispatch.id}, '${escapeHtml(dispatch.dispatch_number)}')" 
-                        class="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-[10px] transition">
-                        <i class="fas fa-check mr-1"></i>Acknowledge
-                    </button>`
+                    ? (dispatch.status === 'pending'
+                        ? `<span class="inline-flex items-center px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[10px] font-medium" title="Product bundle is ready, but not yet in transit">
+                            <i class="fas fa-box text-amber-600 mr-1.5 text-xs"></i>Bundle Ready (Not in Transit)
+                           </span>`
+                        : `<button onclick="openAcknowledgeModal(${dispatch.id}, '${escapeHtml(dispatch.dispatch_number)}')" 
+                            class="px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-[10px] transition">
+                            <i class="fas fa-check mr-1"></i>Acknowledge
+                        </button>`)
                     : '<span class="text-green-600 text-[10px]"><i class="fas fa-check-circle mr-1"></i>Done</span>'}
             </td>
         </tr>

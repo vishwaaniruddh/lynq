@@ -100,6 +100,7 @@ class MenuService {
                 'adv_only' => true,
                 'items' => [
                     ['id' => 'sites_list', 'label' => 'Sites', 'icon' => 'fa-list', 'url' => '/sites/index.php', 'permission' => 'sites.view', 'adv_only' => true],
+                    ['id' => 'sites_master', 'label' => 'Master Lifecycle Tracking', 'icon' => 'fa-sitemap', 'url' => '/sites/index_new.php', 'permission' => 'sites.view', 'adv_only' => true],
                     ['id' => 'sites_add', 'label' => 'Add Site', 'icon' => 'fa-plus', 'url' => '/sites/add.php', 'permission' => 'sites.create', 'adv_only' => true],
                     ['id' => 'sites_bulk_upload', 'label' => 'Bulk Upload', 'icon' => 'fa-upload', 'url' => '/sites/bulk_upload.php', 'permission' => 'sites.bulk_upload', 'adv_only' => true],
                     ['id' => 'sites_delegate', 'label' => 'Delegate Sites', 'icon' => 'fa-share-alt', 'url' => '/sites/delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true],
