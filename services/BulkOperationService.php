@@ -98,6 +98,49 @@ class BulkOperationService {
             ];
         }
         
+        // Check if PhpSpreadsheet is available, otherwise use SimpleXLSX fallback
+        if (!class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
+            require_once __DIR__ . '/../utils/SimpleXLSX.php';
+            $xlsx = SimpleXLSX::parse($filePath);
+            if (!$xlsx) {
+                return [
+                    'success' => false,
+                    'message' => 'Could not parse Excel file.',
+                    'data' => [],
+                    'errors' => []
+                ];
+            }
+            $rawRows = $xlsx->rows();
+            $data = [];
+            $columnIndices = [];
+            foreach ($columnMapping as $column => $fieldName) {
+                $columnIndices[$this->columnLetterToIndex($column)] = $fieldName;
+            }
+            for ($r = ($dataStartRow - 1); $r < count($rawRows); $r++) {
+                $rowCells = $rawRows[$r];
+                $rowData = [];
+                $hasData = false;
+                foreach ($columnIndices as $cIdx => $fieldName) {
+                    $cellValue = isset($rowCells[$cIdx]) ? trim((string)$rowCells[$cIdx]) : '';
+                    if ($cellValue !== '') {
+                        $hasData = true;
+                    }
+                    $rowData[$fieldName] = $cellValue;
+                }
+                if ($hasData) {
+                    $rowData['_row_number'] = $r + 1;
+                    $data[] = $rowData;
+                }
+            }
+            return [
+                'success' => true,
+                'message' => 'File parsed successfully',
+                'data' => $data,
+                'totalRows' => count($data),
+                'errors' => []
+            ];
+        }
+
         try {
             // Load the spreadsheet using PhpSpreadsheet
             $spreadsheet = IOFactory::load($filePath);

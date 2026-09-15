@@ -58,7 +58,8 @@ class SiteService {
             ];
         }
         
-        if ($this->siteRepository->checkDuplicateName($data['site_name'], $data['lho'], $data['company_id'])) {
+        $lho = $data['lho'] ?? '';
+        if (!empty($lho) && $this->siteRepository->checkDuplicateName($data['site_name'], $lho, $data['company_id'])) {
             return [
                 'success' => false,
                 'message' => 'A site with this name already exists in the same LHO',
@@ -348,8 +349,8 @@ class SiteService {
         
         // Define allowed fields
         $allowedFields = [
-            'site_name', 'lho', 'bank_name', 'customer_name',
-            'city', 'state', 'country', 'zone', 'address',
+            'site_name', 'lho', 'bank_name', 'customer_name', 'project_id',
+            'city', 'state', 'country', 'zone', 'address', 'custom_fields_json',
             'latitude', 'longitude', 'company_id', 'status'
         ];
         
@@ -573,11 +574,11 @@ class SiteService {
      * @param int $companyId Company ID
      * @return array Validation result with 'isValid' and 'errors'
      */
-    private function validateSiteRowForImport(array $row, int $companyId): array {
+    public function validateSiteRowForImport(array $row, int $companyId): array {
         $errors = [];
         
         // Check required fields
-        $requiredFields = ['site_name', 'lho', 'city', 'state', 'country'];
+        $requiredFields = ['site_name', 'city', 'state', 'country'];
         foreach ($requiredFields as $field) {
             if (empty($row[$field])) {
                 $errors[] = [

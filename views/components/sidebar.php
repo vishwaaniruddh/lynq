@@ -9,9 +9,17 @@
  */
 
 // Initialize MenuService if not already done
+// if (!isset($menuService)) {
+//     $menuService = new MenuService();
+// }
+
+
 if (!isset($menuService)) {
-    $menuService = new MenuService();
+    require_once __DIR__ . '/../../services/MenuService2.php';
+    $menuService = new MenuService2();
 }
+
+
 
 // Get current user ID from session
 $currentUserId = $sessionService->getCurrentUserId() ?? null;
@@ -78,6 +86,10 @@ function getMenuIconColor($itemId) {
         // **Feature: feasibility-module, Menu Integration**
         'feasibility_tracking' => 'text-teal-400',
         'feasibility_export' => 'text-green-400',
+        // Installation Tracking (ADV)
+        'installation_tracking' => 'text-indigo-400',
+        'installation_list' => 'text-blue-400',
+        'adv_installation_reviews' => 'text-emerald-400',
         // Inventory
         'inventory_warehouses' => 'text-amber-400',
         'inventory_products' => 'text-blue-400',
@@ -497,6 +509,12 @@ function renderCollapsibleSection($section, $currentPage, $baseUrl, $isNested = 
         <!-- **Feature: feasibility-module, Menu Integration** -->
         <?php if ($isAdvUserFlag && !empty($visibleMenus['feasibility_section']) && !empty($visibleMenus['feasibility_section']['items'])): ?>
         <?php echo renderCollapsibleSection($visibleMenus['feasibility_section'], $currentPage ?? '', $baseUrl); ?>
+        <?php endif; ?>
+        
+        <!-- Installation Tracking Section (Collapsible) - ADV Only -->
+        <!-- **Feature: installation-module, Menu Integration** -->
+        <?php if ($isAdvUserFlag && !empty($visibleMenus['installation_section']) && !empty($visibleMenus['installation_section']['items'])): ?>
+        <?php echo renderCollapsibleSection($visibleMenus['installation_section'], $currentPage ?? '', $baseUrl); ?>
         <?php endif; ?>
         
         <!-- Inventory Section (Collapsible) - All users with permissions -->

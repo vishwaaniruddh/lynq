@@ -62,6 +62,8 @@ class MenuService {
                     ['id' => 'masters_companies', 'label' => 'Company', 'icon' => 'fa-building', 'url' => '/companies/index.php', 'permission' => 'companies.read', 'adv_only' => true],
                     ['id' => 'masters_banks', 'label' => 'Bank', 'icon' => 'fa-university', 'url' => '/masters/banks.php', 'permission' => 'masters.banks.view', 'adv_only' => true],
                     ['id' => 'masters_customers', 'label' => 'Customer', 'icon' => 'fa-users', 'url' => '/masters/customers.php', 'permission' => 'masters.customers.view', 'adv_only' => true],
+                    ['id' => 'masters_projects', 'label' => 'Projects', 'icon' => 'fa-project-diagram', 'url' => '/masters/projects.php', 'permission' => 'masters.projects.view', 'adv_only' => true],
+                    ['id' => 'masters_forms', 'label' => 'Forms Master', 'icon' => 'fa-wpforms', 'url' => '/masters/forms.php', 'permission' => 'masters.forms.view', 'adv_only' => true],
                     ['id' => 'masters_couriers', 'label' => 'Courier', 'icon' => 'fa-truck', 'url' => '/masters/couriers.php', 'permission' => 'masters.couriers.view', 'adv_only' => true],
                     [
                         'id' => 'location_master',
@@ -100,9 +102,8 @@ class MenuService {
                 'adv_only' => true,
                 'items' => [
                     ['id' => 'sites_list', 'label' => 'Sites', 'icon' => 'fa-list', 'url' => '/sites/index.php', 'permission' => 'sites.view', 'adv_only' => true],
-                    ['id' => 'sites_master', 'label' => 'Master Lifecycle Tracking', 'icon' => 'fa-sitemap', 'url' => '/sites/index_new.php', 'permission' => 'sites.view', 'adv_only' => true],
-                    ['id' => 'sites_add', 'label' => 'Add Site', 'icon' => 'fa-plus', 'url' => '/sites/add.php', 'permission' => 'sites.create', 'adv_only' => true],
-                    ['id' => 'sites_bulk_upload', 'label' => 'Bulk Upload', 'icon' => 'fa-upload', 'url' => '/sites/bulk_upload.php', 'permission' => 'sites.bulk_upload', 'adv_only' => true],
+                    ['id' => 'sites_add', 'label' => 'Add Site', 'icon' => 'fa-plus', 'url' => '/sites/site_add_custome_form.php', 'permission' => 'sites.create', 'adv_only' => true],
+                    ['id' => 'sites_bulk_upload_dynamic', 'label' => 'Bulk Upload', 'icon' => 'fa-upload', 'url' => '/sites/bulk_upload_dynamic.php', 'permission' => 'sites.bulk_upload', 'adv_only' => true],
                     ['id' => 'sites_delegate', 'label' => 'Delegate Sites', 'icon' => 'fa-share-alt', 'url' => '/sites/delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true],
                     ['id' => 'sites_bulk_delegate', 'label' => 'Bulk Delegate', 'icon' => 'fa-share-square', 'url' => '/sites/bulk_delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true]
                 ]

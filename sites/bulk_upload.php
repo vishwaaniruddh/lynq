@@ -93,6 +93,9 @@ ob_start();
                 <p class="text-sm text-gray-500">Upload multiple sites using an Excel file</p>
             </div>
             <div class="flex gap-3">
+                <a href="bulk_upload_dynamic.php" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition">
+                    <i class="fas fa-magic mr-2"></i>Dynamic Project Upload
+                </a>
                 <a href="bulk_upload_history.php" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
                     <i class="fas fa-history mr-2"></i>Upload History
                 </a>
@@ -280,7 +283,6 @@ ob_start();
                 <h5 class="font-medium text-blue-800 mb-2"><i class="fas fa-info-circle mr-2"></i>Required Columns:</h5>
                 <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
                     <li><strong>site_name</strong> - Unique name for the site</li>
-                    <li><strong>lho</strong> - Local Head Office - must exist in LHO Master</li>
                     <li><strong>city</strong> - City name - must exist in City Master</li>
                     <li><strong>state</strong> - State name - must exist in State Master</li>
                     <li><strong>country</strong> - Country name - must exist in Country Master</li>
@@ -290,6 +292,7 @@ ob_start();
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
                 <h5 class="font-medium text-gray-700 mb-2"><i class="fas fa-list mr-2"></i>Optional Columns (validated if provided):</h5>
                 <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+                    <li><strong>lho</strong> - Local Head Office - if provided, must exist in LHO Master</li>
                     <li><strong>bank_name</strong> - Associated bank name - if provided, must exist in Bank Master</li>
                     <li><strong>customer_name</strong> - Customer name - if provided, must exist in Customer Master</li>
                     <li><strong>zone</strong> - Zone/region - if provided, must exist in Zone Master</li>

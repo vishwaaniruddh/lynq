@@ -141,15 +141,31 @@ class SiteRepository extends BaseRepository {
             $params[] = $filters['lho'];
             $types .= 's';
         }
+
+        // Project filter
+        if (!empty($filters['project_id'])) {
+            $whereClause[] = "s.`project_id` = ?";
+            $params[] = (int)$filters['project_id'];
+            $types .= 'i';
+        }
+
+        // Bank filter
+        if (!empty($filters['bank_name'])) {
+            $whereClause[] = "s.`bank_name` = ?";
+            $params[] = $filters['bank_name'];
+            $types .= 's';
+        }
         
-        // Search filter (searches in site_name, address, city)
+        // Search filter (searches in site_name, address, city, bank_name, project)
         if (!empty($filters['search'])) {
-            $whereClause[] = "(s.`site_name` LIKE ? OR s.`address` LIKE ? OR s.`city` LIKE ?)";
+            $whereClause[] = "(s.`site_name` LIKE ? OR s.`address` LIKE ? OR s.`city` LIKE ? OR s.`bank_name` LIKE ? OR p.`name` LIKE ?)";
             $searchTerm = '%' . $filters['search'] . '%';
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
-            $types .= 'sss';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $types .= 'sssss';
         }
         
         // Site name filter
@@ -197,7 +213,8 @@ class SiteRepository extends BaseRepository {
         }
         
         // Base JOIN clause for all queries
-        $joinSQL = " LEFT JOIN `site_delegations` sd ON s.id = sd.site_id AND sd.status IN ('pending', 'accepted')
+        $joinSQL = " LEFT JOIN `projects` p ON s.project_id = p.id
+                    LEFT JOIN `site_delegations` sd ON s.id = sd.site_id AND sd.status IN ('pending', 'accepted')
                     LEFT JOIN `companies` c ON sd.contractor_id = c.id
                     LEFT JOIN `users` u_del ON sd.delegated_by = u_del.id
                     LEFT JOIN `users` u_resp ON sd.responded_by = u_resp.id
@@ -217,6 +234,8 @@ class SiteRepository extends BaseRepository {
         
         // Get paginated data with delegation status, feasibility status, material details, and mapped router details
         $dataSQL = "SELECT s.*, 
+                    p.name as project_name,
+                    p.code as project_code,
                     l.to_emails as lho_to_emails,
                     l.cc_emails as lho_cc_emails,
                     sd.id as delegation_id,
@@ -366,11 +385,18 @@ class SiteRepository extends BaseRepository {
      * 
      * Requirements: 1.5
      */
-    public function checkDuplicateName(string $siteName, string $lho, int $companyId, ?int $excludeId = null): bool {
-        $sql = "SELECT COUNT(*) as count FROM `{$this->table}` 
-                WHERE `site_name` = ? AND `lho` = ? AND `company_id` = ? AND `status` != 'deleted'";
-        $params = [$siteName, $lho, $companyId];
-        $types = 'ssi';
+    public function checkDuplicateName(string $siteName, ?string $lho, int $companyId, ?int $excludeId = null): bool {
+        if (!empty($lho)) {
+            $sql = "SELECT COUNT(*) as count FROM `{$this->table}` 
+                    WHERE `site_name` = ? AND `lho` = ? AND `company_id` = ? AND `status` != 'deleted'";
+            $params = [$siteName, $lho, $companyId];
+            $types = 'ssi';
+        } else {
+            $sql = "SELECT COUNT(*) as count FROM `{$this->table}` 
+                    WHERE `site_name` = ? AND `company_id` = ? AND `status` != 'deleted'";
+            $params = [$siteName, $companyId];
+            $types = 'si';
+        }
         
         if ($excludeId !== null) {
             $sql .= " AND `id` != ?";
@@ -393,7 +419,7 @@ class SiteRepository extends BaseRepository {
      */
     public function create($data) {
         // Validate required fields
-        $requiredFields = ['site_name', 'lho', 'city', 'state', 'country', 'company_id'];
+        $requiredFields = ['site_name', 'city', 'state', 'country', 'company_id'];
         foreach ($requiredFields as $field) {
             if (!isset($data[$field]) || trim((string)$data[$field]) === '') {
                 throw new Exception("The {$field} field is required");
@@ -401,7 +427,8 @@ class SiteRepository extends BaseRepository {
         }
         
         // Check for duplicate site name within LHO and company (Requirement 1.5)
-        if ($this->checkDuplicateName($data['site_name'], $data['lho'], $data['company_id'])) {
+        $lho = $data['lho'] ?? '';
+        if (!empty($lho) && $this->checkDuplicateName($data['site_name'], $lho, $data['company_id'])) {
             throw new Exception("A site with this name already exists in the same LHO");
         }
         
@@ -422,11 +449,13 @@ class SiteRepository extends BaseRepository {
             'lho' => 's',
             'bank_name' => 's',
             'customer_name' => 's',
+            'project_id' => 'i',
             'city' => 's',
             'state' => 's',
             'country' => 's',
             'zone' => 's',
             'address' => 's',
+            'custom_fields_json' => 's',
             'latitude' => 'd',
             'longitude' => 'd',
             'company_id' => 'i',
@@ -507,11 +536,13 @@ class SiteRepository extends BaseRepository {
             'lho' => 's',
             'bank_name' => 's',
             'customer_name' => 's',
+            'project_id' => 'i',
             'city' => 's',
             'state' => 's',
             'country' => 's',
             'zone' => 's',
             'address' => 's',
+            'custom_fields_json' => 's',
             'latitude' => 'd',
             'longitude' => 'd',
             'company_id' => 'i',

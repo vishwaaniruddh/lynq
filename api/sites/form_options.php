@@ -18,7 +18,8 @@ require_once __DIR__ . '/../ApiResponse.php';
 require_once __DIR__ . '/../../middleware/ApiAuthMiddleware.php';
 require_once __DIR__ . '/../../services/LocationService.php';
 require_once __DIR__ . '/../../services/BankService.php';
-require_once __DIR__ . '/../../services/CustomerService.php';
+require_once __DIR__ . '/../../services/ProjectService.php';
+require_once __DIR__ . '/../../models/CustomForm.php';
 
 // Discard any output generated during includes
 ob_end_clean();
@@ -34,6 +35,18 @@ try {
     
     // Require ADV user access
     $user = $authMiddleware->requireAdvUser();
+    
+    // Fetch dynamic custom form schema for a project & purpose
+    if (isset($_GET['fetch_custom_form']) && !empty($_GET['purpose'])) {
+        $purpose = trim($_GET['purpose']);
+        $projectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
+        
+        $customFormModel = new CustomForm();
+        $formSchema = $customFormModel->findFormForProject($purpose, $projectId);
+        
+        ApiResponse::success(['form' => $formSchema]);
+        exit;
+    }
     
     $locationService = new LocationService();
     
@@ -64,11 +77,28 @@ try {
     $customerService = new CustomerService();
     $customers = $customerService->getActiveList();
     
+    $projectService = new ProjectService();
+    $projectsRes = $projectService->getAll(['status' => 1]);
+    $projects = $projectsRes['data'] ?? [];
+    
+    // Get site counts per project
+    $db = DatabaseConfig::getInstance();
+    $pCountsRes = $db->getResults("SELECT project_id, COUNT(*) as site_count FROM sites WHERE status != 'deleted' GROUP BY project_id");
+    $pCounts = [];
+    foreach ($pCountsRes as $pc) {
+        if ($pc['project_id']) $pCounts[$pc['project_id']] = (int)$pc['site_count'];
+    }
+    foreach ($projects as &$p) {
+        $p['site_count'] = $pCounts[$p['id']] ?? 0;
+    }
+    unset($p);
+    
     ApiResponse::success([
         'countries' => $countries,
         'lhos' => $lhos,
         'banks' => $banks,
         'customers' => $customers,
+        'projects' => $projects,
         'zones' => $zones
     ]);
     

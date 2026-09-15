@@ -11,8 +11,8 @@ require_once __DIR__ . '/BaseModel.php';
 class Site extends BaseModel {
     protected $table = 'sites';
     protected $fillable = [
-        'site_name', 'lho', 'bank_name', 'customer_name', 
-        'city', 'state', 'country', 'zone', 'address',
+        'site_name', 'lho', 'bank_name', 'customer_name', 'project_id',
+        'city', 'state', 'country', 'zone', 'address', 'custom_fields_json',
         'latitude', 'longitude', 'company_id', 'status',
         'created_by', 'updated_by'
     ];
@@ -20,7 +20,7 @@ class Site extends BaseModel {
     /**
      * Required fields for site creation
      */
-    protected $requiredFields = ['site_name', 'lho', 'city', 'state', 'country'];
+    protected $requiredFields = ['site_name', 'city', 'state', 'country'];
     
     /**
      * Validate site data

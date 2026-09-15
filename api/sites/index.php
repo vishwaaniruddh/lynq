@@ -73,6 +73,8 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
     $siteName = isset($_GET['site_name']) ? trim($_GET['site_name']) : null;
     $status = isset($_GET['status']) ? $_GET['status'] : null;
     $lho = isset($_GET['lho']) ? trim($_GET['lho']) : null;
+    $projectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
+    $bankName = isset($_GET['bank_name']) ? trim($_GET['bank_name']) : null;
     $delegation = isset($_GET['delegation']) ? $_GET['delegation'] : null;
     $material = isset($_GET['material']) ? $_GET['material'] : null;
     $installation = isset($_GET['installation']) ? $_GET['installation'] : null;
@@ -118,6 +120,14 @@ function handleGetRequest($siteService, $authMiddleware, $user) {
     
     if ($lho !== null && $lho !== '') {
         $filters['lho'] = $lho;
+    }
+
+    if ($projectId !== null) {
+        $filters['project_id'] = $projectId;
+    }
+
+    if ($bankName !== null && $bankName !== '') {
+        $filters['bank_name'] = $bankName;
     }
     
     if ($delegation !== null && $delegation !== '') {
@@ -231,11 +241,15 @@ function handleCreate($siteService, $authMiddleware, $user, $input) {
         'lho' => $input['lho'] ?? '',
         'bank_name' => $input['bank_name'] ?? null,
         'customer_name' => $input['customer_name'] ?? null,
+        'project_id' => !empty($input['project_id']) ? (int)$input['project_id'] : null,
         'city' => $input['city'] ?? '',
         'state' => $input['state'] ?? '',
         'country' => $input['country'] ?? '',
         'zone' => $input['zone'] ?? null,
         'address' => $input['address'] ?? null,
+        'custom_fields_json' => isset($input['custom_fields_json']) 
+            ? (is_array($input['custom_fields_json']) ? json_encode($input['custom_fields_json'], JSON_UNESCAPED_UNICODE) : $input['custom_fields_json']) 
+            : null,
         'latitude' => isset($input['latitude']) && $input['latitude'] !== '' ? (float)$input['latitude'] : null,
         'longitude' => isset($input['longitude']) && $input['longitude'] !== '' ? (float)$input['longitude'] : null,
         'company_id' => $user['company_id'],
@@ -274,12 +288,16 @@ function handleUpdate($siteService, $authMiddleware, $user, $input) {
     $id = (int)$input['id'];
     $data = [];
     
-    $allowedFields = ['site_name', 'lho', 'bank_name', 'customer_name', 'city', 'state', 'country', 'zone', 'address', 'latitude', 'longitude', 'status'];
+    $allowedFields = ['site_name', 'lho', 'bank_name', 'customer_name', 'project_id', 'city', 'state', 'country', 'zone', 'address', 'custom_fields_json', 'latitude', 'longitude', 'status'];
     
     foreach ($allowedFields as $field) {
         if (isset($input[$field])) {
             if (in_array($field, ['latitude', 'longitude'])) {
                 $data[$field] = $input[$field] !== '' ? (float)$input[$field] : null;
+            } elseif ($field === 'project_id') {
+                $data[$field] = !empty($input[$field]) ? (int)$input[$field] : null;
+            } elseif ($field === 'custom_fields_json') {
+                $data[$field] = is_array($input[$field]) ? json_encode($input[$field], JSON_UNESCAPED_UNICODE) : $input[$field];
             } else {
                 $data[$field] = $input[$field];
             }

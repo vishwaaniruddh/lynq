@@ -41,6 +41,9 @@ $users = [];
 $companies = [];
 $roles = [];
 
+$projectCount = 0;
+$activeProjects = 0;
+
 $siteCount = 0;
 $activeSites = 0;
 $inactiveSites = 0;
@@ -76,21 +79,36 @@ try {
         $companyCount = $stmt->fetchColumn();
 
         try {
-            $stmt = $db->prepare("SELECT COUNT(*) FROM sites WHERE company_id = ? AND status = 'active'");
+            $stmt = $db->query("SELECT COUNT(*) FROM projects WHERE status = 1 AND deleted_at IS NULL");
+            $projectCount = (int)$stmt->fetchColumn();
+            $activeProjects = $projectCount;
+
+            $stmt = $db->prepare("
+                SELECT COUNT(*) FROM sites s 
+                INNER JOIN projects p ON s.project_id = p.id 
+                WHERE s.company_id = ? AND s.status = 'active' AND p.status = 1 AND p.deleted_at IS NULL
+            ");
             $stmt->execute([$currentUser['company_id']]);
-            $siteCount = $stmt->fetchColumn();
+            $siteCount = (int)$stmt->fetchColumn();
             $activeSites = $siteCount;
             
-            $stmt = $db->prepare("SELECT COUNT(*) FROM sites WHERE company_id = ? AND status = 'inactive'");
+            $stmt = $db->prepare("
+                SELECT COUNT(*) FROM sites s 
+                INNER JOIN projects p ON s.project_id = p.id 
+                WHERE s.company_id = ? AND s.status = 'inactive' AND p.status = 1 AND p.deleted_at IS NULL
+            ");
             $stmt->execute([$currentUser['company_id']]);
-            $inactiveSites = $stmt->fetchColumn();
+            $inactiveSites = (int)$stmt->fetchColumn();
 
             $stmt = $db->prepare("
                 SELECT COUNT(*) as total,
                     SUM(CASE WHEN sd.status = 'pending' THEN 1 ELSE 0 END) as pending,
                     SUM(CASE WHEN sd.status = 'accepted' THEN 1 ELSE 0 END) as accepted,
                     SUM(CASE WHEN sd.status = 'rejected' THEN 1 ELSE 0 END) as rejected
-                FROM site_delegations sd INNER JOIN sites s ON sd.site_id = s.id WHERE s.company_id = ?
+                FROM site_delegations sd 
+                INNER JOIN sites s ON sd.site_id = s.id 
+                INNER JOIN projects p ON s.project_id = p.id 
+                WHERE s.company_id = ? AND p.status = 1 AND p.deleted_at IS NULL
             ");
             $stmt->execute([$currentUser['company_id']]);
             $stats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -101,9 +119,12 @@ try {
             
             $stmt = $db->prepare("
                 SELECT c.name as contractor_name, COUNT(*) as count
-                FROM site_delegations sd INNER JOIN sites s ON sd.site_id = s.id
+                FROM site_delegations sd 
+                INNER JOIN sites s ON sd.site_id = s.id
+                INNER JOIN projects p ON s.project_id = p.id
                 INNER JOIN companies c ON sd.contractor_id = c.id
-                WHERE s.company_id = ? GROUP BY sd.contractor_id ORDER BY count DESC LIMIT 5
+                WHERE s.company_id = ? AND p.status = 1 AND p.deleted_at IS NULL 
+                GROUP BY sd.contractor_id ORDER BY count DESC LIMIT 5
             ");
             $stmt->execute([$currentUser['company_id']]);
             $delegationByContractor = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -197,10 +218,13 @@ try {
         
         try {
             $stmt = $db->prepare("SELECT COUNT(*) as total,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-                FROM site_delegations WHERE contractor_id = ?");
+                SUM(CASE WHEN sd.status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN sd.status = 'accepted' THEN 1 ELSE 0 END) as accepted,
+                SUM(CASE WHEN sd.status = 'rejected' THEN 1 ELSE 0 END) as rejected
+                FROM site_delegations sd
+                INNER JOIN sites s ON sd.site_id = s.id
+                INNER JOIN projects p ON s.project_id = p.id
+                WHERE sd.contractor_id = ? AND p.status = 1 AND p.deleted_at IS NULL");
             $stmt->execute([$currentUser['company_id']]);
             $stats = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($stats) {
@@ -209,7 +233,10 @@ try {
             }
             
             $stmt = $db->prepare("SELECT COUNT(DISTINCT ea.site_id) FROM engineer_assignments ea
-                INNER JOIN site_delegations sd ON ea.delegation_id = sd.id WHERE sd.contractor_id = ?");
+                INNER JOIN site_delegations sd ON ea.delegation_id = sd.id
+                INNER JOIN sites s ON sd.site_id = s.id
+                INNER JOIN projects p ON s.project_id = p.id
+                WHERE sd.contractor_id = ? AND p.status = 1 AND p.deleted_at IS NULL");
             $stmt->execute([$currentUser['company_id']]);
             $contractorStats['assigned_to_engineers'] = (int)$stmt->fetchColumn();
         } catch (Exception $e) {}
@@ -356,6 +383,10 @@ ob_start();
         
         <div class="flex flex-wrap items-center gap-2 bg-white/10 p-2.5 rounded-xl border border-white/10 backdrop-blur-md">
             <div class="text-center px-3 py-1 border-r border-white/10">
+                <p class="text-[10px] uppercase text-slate-300 font-semibold tracking-wider">Projects</p>
+                <p class="text-lg font-bold text-amber-300"><?php echo $activeProjects; ?></p>
+            </div>
+            <div class="text-center px-3 py-1 border-r border-white/10">
                 <p class="text-[10px] uppercase text-slate-300 font-semibold tracking-wider">Active Sites</p>
                 <p class="text-lg font-bold text-emerald-400"><?php echo $activeSites; ?></p>
             </div>
@@ -371,8 +402,23 @@ ob_start();
     </div>
 </div>
 
-<!-- Primary Interactive Gradient Stat Cards Grid (8 Columns Responsive) -->
-<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5 mb-6">
+<!-- Primary Interactive Gradient Stat Cards Grid (9 Columns Responsive) -->
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3.5 mb-6">
+    <!-- Projects Card -->
+    <div class="card-hover grad-amber text-white rounded-2xl p-3.5 shadow-lg cursor-pointer relative overflow-hidden group" onclick="window.location='masters/projects.php'">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="flex items-center justify-between mb-2">
+            <div class="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+                <i class="fas fa-layer-group text-white text-xs"></i>
+            </div>
+            <span class="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-md">
+                <?php echo $activeProjects; ?> active
+            </span>
+        </div>
+        <p class="text-2xl font-black tracking-tight"><?php echo $projectCount; ?></p>
+        <p class="text-[10px] font-semibold text-white/80 uppercase tracking-wider mt-0.5">Projects</p>
+    </div>
+
     <!-- Sites Card -->
     <div class="card-hover grad-indigo text-white rounded-2xl p-3.5 shadow-lg cursor-pointer relative overflow-hidden group" onclick="window.location='sites/index.php'">
         <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
@@ -905,7 +951,7 @@ ob_start();
             <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">Quick Actions Dock</h4>
             <div class="grid grid-cols-2 gap-2.5">
                 <?php if (can('sites.create')): ?>
-                <a href="sites/add.php" class="flex items-center p-2.5 rounded-xl bg-indigo-50/80 hover:bg-indigo-100/80 text-indigo-700 transition group border border-indigo-100">
+                <a href="sites/site_add_custome_form.php" class="flex items-center p-2.5 rounded-xl bg-indigo-50/80 hover:bg-indigo-100/80 text-indigo-700 transition group border border-indigo-100">
                     <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center mr-2 shadow-sm group-hover:scale-110 transition">
                         <i class="fas fa-plus text-xs"></i>
                     </div>

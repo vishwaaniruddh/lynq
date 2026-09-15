@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "LYNQ Engineer",
+    "slug": "lynq-engineer-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#2563eb"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lynq.engineer"
+    },
+    "android": {
+      "package": "com.lynq.engineer",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

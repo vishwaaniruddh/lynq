@@ -78,6 +78,20 @@ class DatabaseConfig {
         $stmt->close();
         return $data;
     }
+    
+    /**
+     * Get the last inserted ID
+     */
+    public function getLastInsertId(): int {
+        return (int)$this->connection->insert_id;
+    }
+
+    /**
+     * Get affected rows from last operation
+     */
+    public function getAffectedRows(): int {
+        return (int)$this->connection->affected_rows;
+    }
 }
 
 /**

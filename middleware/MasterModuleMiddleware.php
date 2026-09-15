@@ -57,6 +57,18 @@ class MasterModuleMiddleware {
             'create' => 'masters.lhos.create',
             'edit' => 'masters.lhos.edit',
             'delete' => 'masters.lhos.delete'
+        ],
+        'forms' => [
+            'view' => 'masters.forms.view',
+            'create' => 'masters.forms.create',
+            'edit' => 'masters.forms.edit',
+            'delete' => 'masters.forms.delete'
+        ],
+        'projects' => [
+            'view' => 'masters.projects.view',
+            'create' => 'masters.projects.create',
+            'edit' => 'masters.projects.edit',
+            'delete' => 'masters.projects.delete'
         ]
     ];
     

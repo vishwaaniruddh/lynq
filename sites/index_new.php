@@ -3,12 +3,14 @@
  * Comprehensive Sites Overview Page (New Design)
  * 
  * Displays full site lifecycle tracking:
- * - 1. Basic Info (Site Name, LHO, City/State, Status)
- * - 2. Delegation (Contractor, Status, Date/Time)
+ * - Top Active Project Switcher & Context Bar
+ * - 1. Basic Info (Site Name, Project, Bank Name, Location, Status)
+ * - 2A. Feasibility Delegation (Contractor, Status, Date/Time)
+ * - 2B. Installation Delegation (Contractor, Status, Date/Time)
  * - 3. Survey / Feasibility (Surveyor, Date/Time, Status, View)
  * - 4. Material Part (Req #, Status, Manifest, Dispatch, Delivery)
  * - 5. Installation (Installer, Completed, Latest Milestone, Status, View)
- * - 6. Network & Actions (IP Details, Actions)
+ * - 6. Network & Actions (IP Details, Actions: View, Edit, Delegate)
  */
 
 require_once __DIR__ . '/../config/autoload.php';
@@ -33,11 +35,45 @@ ob_start();
 ?>
 
 <div class="space-y-6">
-    <!-- Header & Action Bar -->
+    <!-- Top Active Project Switcher & Context Bar -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-indigo-800/40">
+        <div class="flex items-center space-x-3.5">
+            <span class="w-11 h-11 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-400/30 flex items-center justify-center text-xl shadow-inner">
+                <i class="fas fa-layer-group"></i>
+            </span>
+            <div>
+                <span class="text-[10px] font-bold tracking-wider text-indigo-300 uppercase block">Active Project Scope</span>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <h3 id="current-project-label" class="text-lg font-extrabold text-white tracking-tight">XTPL Project</h3>
+                    <span id="current-project-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-400/40">24 Sites</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center bg-white/10 backdrop-blur-md rounded-xl p-1 border border-white/15 shadow-sm">
+                <span class="px-2.5 text-xs text-indigo-200 font-semibold flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fas fa-exchange-alt text-indigo-400"></i> Switch Project:
+                </span>
+                <select id="top-project-select" onchange="onTopProjectChange(this.value)" 
+                    class="bg-slate-800 text-white border-0 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-sm min-w-[180px]">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            
+            <?php if (isAdvUser()): ?>
+            <a href="../sites/site_add_custome_form.php" id="btn-add-site-project" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center whitespace-nowrap">
+                <i class="fas fa-plus mr-1.5"></i>Add Site to Project
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Header & Secondary Actions -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Advanced Sites Management</h2>
-            <p class="text-xs text-gray-500 mt-1">Comprehensive Lifecycle Tracking across Delegation, Survey/Feasibility, Materials, and Installation</p>
+            <h2 class="text-xl font-bold text-gray-800 tracking-tight">Sites Master Lifecycle Tracker</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Track survey feasibility, material dispatches, installations, and router network status</p>
         </div>
         <div class="flex items-center gap-2">
             <button onclick="refreshData()" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-xs font-semibold shadow-sm flex items-center">
@@ -49,11 +85,6 @@ ob_start();
             <a href="../sites/bulk_upload.php" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition text-xs font-semibold shadow-sm flex items-center">
                 <i class="fas fa-upload mr-1.5"></i>Bulk Import
             </a>
-            <?php if (isAdvUser()): ?>
-            <a href="../sites/add.php" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition text-xs font-semibold shadow-sm flex items-center">
-                <i class="fas fa-plus mr-1.5"></i>+ Add Site
-            </a>
-            <?php endif; ?>
         </div>
     </div>
 
@@ -64,7 +95,7 @@ ob_start();
                 <i class="fas fa-sitemap text-sm"></i>
             </div>
             <div>
-                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Total Sites</p>
+                <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Total Sites in Project</p>
                 <p id="kpi-total" class="text-lg font-bold text-gray-800">0</p>
             </div>
         </div>
@@ -108,24 +139,21 @@ ob_start();
 
     <!-- Multi-field Search & Filter Grid -->
     <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-2">
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div>
-                <input type="text" id="search-input" placeholder="Search ID, Location, Customer..." 
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            <!-- 1. Search Query -->
+            <div class="lg:col-span-2">
+                <input type="text" id="search-input" placeholder="Search Site ID, Bank, Location..." 
                     class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/50">
             </div>
+
+            <!-- 2. Bank Filter -->
             <div>
-                <input type="text" id="search-site" placeholder="Search Site..." 
-                    class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/50">
-            </div>
-            <div>
-                <input type="text" id="search-city" placeholder="Search City..." 
-                    class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/50">
-            </div>
-            <div>
-                <select id="lho-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
-                    <option value="">LHO / State (All)</option>
+                <select id="bank-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50 font-medium text-gray-700">
+                    <option value="">Bank (All Banks)</option>
                 </select>
             </div>
+
+            <!-- 3. Status Filter -->
             <div>
                 <select id="status-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
                     <option value="">Status (All)</option>
@@ -133,6 +161,8 @@ ob_start();
                     <option value="inactive">Inactive</option>
                 </select>
             </div>
+
+            <!-- 4. Delegation Filter -->
             <div>
                 <select id="delegation-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
                     <option value="">Delegation (All)</option>
@@ -140,6 +170,8 @@ ob_start();
                     <option value="not_delegated">Not Delegated</option>
                 </select>
             </div>
+
+            <!-- 5. Survey / Feasibility Filter -->
             <div>
                 <select id="survey-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
                     <option value="">Survey / Feasibility (All)</option>
@@ -148,6 +180,8 @@ ob_start();
                     <option value="pending">Pending</option>
                 </select>
             </div>
+
+            <!-- 6. Material Filter -->
             <div>
                 <select id="material-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
                     <option value="">Material Status (All)</option>
@@ -156,6 +190,8 @@ ob_start();
                     <option value="delivered">Delivered</option>
                 </select>
             </div>
+
+            <!-- 7. Installation Filter -->
             <div>
                 <select id="installation-filter" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50/50">
                     <option value="">Installation (All)</option>
@@ -164,7 +200,9 @@ ob_start();
                     <option value="pending">Pending</option>
                 </select>
             </div>
-            <div class="flex items-center gap-1">
+
+            <!-- Clear Action -->
+            <div>
                 <button onclick="clearFilters()" class="w-full py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-xs font-semibold">
                     <i class="fas fa-times mr-1"></i>Clear Filters
                 </button>
@@ -172,14 +210,14 @@ ob_start();
         </div>
     </div>
 
-    <!-- Main Master Table with Live Site Color-Coded Section Headers -->
+    <!-- Main Master Table with Color-Coded Section Headers -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border-collapse min-w-[1300px]">
+            <table class="w-full text-xs text-left border-collapse min-w-[1400px]">
                 <thead>
                     <!-- Section Header Row -->
                     <tr class="font-bold text-[11px] uppercase tracking-wider text-center border-b">
-                        <th colspan="4" class="px-3 py-2 bg-slate-800 text-white border-r border-slate-700">1. SITE BASIC INFO</th>
+                        <th colspan="5" class="px-3 py-2 bg-slate-800 text-white border-r border-slate-700">1. SITE BASIC INFO</th>
                         <th colspan="3" class="px-3 py-2 bg-purple-100 text-purple-900 border-r border-purple-200">2A. FEASIBILITY DELEGATION</th>
                         <th colspan="3" class="px-3 py-2 bg-indigo-100 text-indigo-900 border-r border-indigo-200">2B. INSTALLATION DELEGATION</th>
                         <th colspan="5" class="px-3 py-2 bg-teal-100 text-teal-900 border-r border-teal-200">3. SURVEY / FEASIBILITY STATUS</th>
@@ -190,10 +228,11 @@ ob_start();
                     </tr>
                     <!-- Column Header Row -->
                     <tr class="bg-gray-50 text-gray-600 font-bold text-[10px] uppercase tracking-wider border-b divide-x">
-                        <!-- 1. Site Info -->
+                        <!-- 1. Site Info (5 cols) -->
                         <th class="px-2 py-2 text-center w-8">#</th>
-                        <th class="px-3 py-2">Site Name</th>
-                        <th class="px-3 py-2">LHO</th>
+                        <th class="px-3 py-2">Site / Xtranet ID</th>
+                        <th class="px-3 py-2">Project</th>
+                        <th class="px-3 py-2">Bank Name</th>
                         <th class="px-3 py-2">Location</th>
                         <!-- 2A. Feasibility Delegation -->
                         <th class="px-3 py-2">Feasibility Vendor</th>
@@ -203,19 +242,19 @@ ob_start();
                         <th class="px-3 py-2">Inst Vendor</th>
                         <th class="px-3 py-2">Status</th>
                         <th class="px-3 py-2">Date</th>
-                        <!-- 3. Feasibility Status -->
-                        <th class="px-3 py-2">Inst Vendor</th>
+                        <!-- 3. Feasibility Status (5 cols) -->
+                        <th class="px-3 py-2">Survey Vendor</th>
                         <th class="px-3 py-2">Surveyor</th>
                         <th class="px-3 py-2">Date/Time</th>
                         <th class="px-3 py-2">Status</th>
                         <th class="px-3 py-2 text-center">View</th>
-                        <!-- 4. Material Part -->
+                        <!-- 4. Material Part (5 cols) -->
                         <th class="px-3 py-2">Req #</th>
                         <th class="px-3 py-2">Status</th>
                         <th class="px-3 py-2">Manifest</th>
                         <th class="px-3 py-2">Dispatch</th>
                         <th class="px-3 py-2">Delivery</th>
-                        <!-- 5. Installation Status -->
+                        <!-- 5. Installation Status (5 cols) -->
                         <th class="px-3 py-2">Installer</th>
                         <th class="px-3 py-2">Completed</th>
                         <th class="px-3 py-2">Latest Milestone</th>
@@ -226,15 +265,15 @@ ob_start();
                         <th class="px-3 py-2">Router IP</th>
                         <th class="px-3 py-2">Network IP</th>
                         <th class="px-3 py-2">Site/ATM IP</th>
-                        <!-- Actions -->
-                        <th class="px-3 py-2 text-center">Action</th>
+                        <!-- Actions (1 col) -->
+                        <th class="px-3 py-2 text-center w-24">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="sites-tbody" class="divide-y divide-gray-100 bg-white">
                     <tr>
                         <td colspan="30" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-spinner fa-spin text-2xl text-primary mb-2"></i>
-                            <p>Loading master site records...</p>
+                            <p>Loading project site records...</p>
                         </td>
                     </tr>
                 </tbody>
@@ -249,36 +288,102 @@ ob_start();
     </div>
 </div>
 
-<!-- Modal: View IP & Router Details -->
-<div id="ip-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeIpModal()"></div>
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative z-10 p-6 space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="font-semibold text-gray-800 text-base flex items-center">
-                    <i class="fas fa-network-wired text-primary mr-2"></i>Network & Router Info
-                </h3>
-                <button onclick="closeIpModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="ip-modal-body" class="space-y-2 text-xs"></div>
-            <div class="flex justify-end pt-3 border-t">
-                <button onclick="closeIpModal()" class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
+let projectsList = [];
+let activeProjectId = null;
+
 const state = {
     sites: [],
     pagination: { page: 1, limit: 20, total: 0, total_pages: 0 },
-    filters: { search: '', lho: '', delegation: '', material: '', installation: '' }
+    filters: { search: '', project_id: '', bank_name: '', status: '', delegation: '', material: '', installation: '' }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadSites();
+    loadLookups();
     setupEventListeners();
 });
+
+async function loadLookups() {
+    try {
+        const res = await fetch('../api/sites/form_options.php');
+        const json = await res.json();
+        if (json.success && json.data) {
+            projectsList = json.data.projects || [];
+            
+            // Resolve active project: from URL or sessionStorage or default to first project
+            const urlProj = new URLSearchParams(window.location.search).get('project_id');
+            const savedProj = sessionStorage.getItem('selected_project_id');
+            
+            if (urlProj && projectsList.some(p => String(p.id) === String(urlProj))) {
+                activeProjectId = urlProj;
+            } else if (savedProj && projectsList.some(p => String(p.id) === String(savedProj))) {
+                activeProjectId = savedProj;
+            } else if (projectsList.length > 0) {
+                activeProjectId = String(projectsList[0].id);
+            }
+
+            // Populate Top Project Switcher
+            const topSelect = document.getElementById('top-project-select');
+            topSelect.innerHTML = '';
+            projectsList.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} (${p.site_count || 0} Sites)`;
+                if (String(p.id) === String(activeProjectId)) opt.selected = true;
+                topSelect.appendChild(opt);
+            });
+
+            updateTopProjectBanner();
+
+            // Populate Bank Filter
+            const bankSelect = document.getElementById('bank-filter');
+            if (json.data.banks) {
+                json.data.banks.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.name;
+                    opt.textContent = b.name;
+                    bankSelect.appendChild(opt);
+                });
+            }
+
+            // Lock project in state filter
+            state.filters.project_id = activeProjectId;
+            loadSites();
+        }
+    } catch (e) {
+        console.error('Failed to load filter lookups', e);
+        loadSites();
+    }
+}
+
+function onTopProjectChange(val) {
+    activeProjectId = val;
+    sessionStorage.setItem('selected_project_id', val);
+    
+    // Update URL param without full reload
+    const url = new URL(window.location);
+    url.searchParams.set('project_id', val);
+    window.history.replaceState({}, '', url);
+
+    updateTopProjectBanner();
+    
+    state.filters.project_id = val;
+    state.pagination.page = 1;
+    loadSites();
+}
+
+function updateTopProjectBanner() {
+    const projObj = projectsList.find(p => String(p.id) === String(activeProjectId));
+    const labelEl = document.getElementById('current-project-label');
+    const badgeEl = document.getElementById('current-project-badge');
+    const addSiteBtn = document.getElementById('btn-add-site-project');
+
+    if (projObj) {
+        if (labelEl) labelEl.textContent = `${projObj.name} Project`;
+        if (badgeEl) badgeEl.textContent = `${projObj.site_count || 0} Sites`;
+        if (addSiteBtn) addSiteBtn.href = `../sites/site_add_custome_form.php?project_id=${projObj.id}`;
+    }
+}
 
 function setupEventListeners() {
     let timeout;
@@ -291,14 +396,28 @@ function setupEventListeners() {
         }, 300);
     });
 
-    ['lho-filter', 'delegation-filter', 'material-filter', 'installation-filter'].forEach(id => {
-        document.getElementById(id).addEventListener('change', (e) => {
-            const key = id.replace('-filter', '');
-            state.filters[key] = e.target.value;
-            state.pagination.page = 1;
-            loadSites();
-        });
+    ['bank-filter', 'status-filter', 'delegation-filter', 'material-filter', 'installation-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', (e) => {
+                const key = id.replace('-filter', '').replace('-', '_');
+                state.filters[key] = e.target.value;
+                state.pagination.page = 1;
+                loadSites();
+            });
+        }
     });
+}
+
+function clearFilters() {
+    state.filters = { search: '', project_id: activeProjectId, bank_name: '', status: '', delegation: '', material: '', installation: '' };
+    document.getElementById('search-input').value = '';
+    ['bank-filter', 'status-filter', 'delegation-filter', 'survey-filter', 'material-filter', 'installation-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    state.pagination.page = 1;
+    loadSites();
 }
 
 async function loadSites() {
@@ -307,7 +426,9 @@ async function loadSites() {
             page: state.pagination.page,
             limit: state.pagination.limit,
             search: state.filters.search,
-            lho: state.filters.lho,
+            project_id: state.filters.project_id || activeProjectId || '',
+            bank_name: state.filters.bank_name,
+            status: state.filters.status,
             delegation: state.filters.delegation,
             material: state.filters.material,
             installation: state.filters.installation
@@ -325,7 +446,6 @@ async function loadSites() {
             updateKPIs();
             renderTable();
             renderPagination();
-            populateLHOs(data.data.lhos || []);
         }
     } catch (e) {
         console.error('Error loading sites:', e);
@@ -356,7 +476,7 @@ function renderTable() {
             <tr>
                 <td colspan="30" class="px-4 py-10 text-center text-gray-400 text-xs">
                     <i class="fas fa-inbox text-3xl mb-2"></i>
-                    <p>No site records found</p>
+                    <p>No site records found for this project.</p>
                 </td>
             </tr>`;
         return;
@@ -386,11 +506,23 @@ function renderTable() {
 
         return `
         <tr class="hover:bg-gray-50/80 transition-colors border-b text-[11px] divide-x">
-            <!-- 1. Site Info (4 cols) -->
+            <!-- 1. Site Info (5 cols) -->
             <td class="px-2 py-2.5 text-center font-bold text-gray-500 whitespace-nowrap">${srNo}</td>
-            <td class="px-3 py-2.5 font-semibold text-gray-800 whitespace-nowrap">${escapeHtml(site.site_name)}</td>
-            <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">${escapeHtml(site.lho || '-')}</td>
-            <td class="px-3 py-2.5 text-gray-500 whitespace-nowrap">${escapeHtml(site.city || '-')}, ${escapeHtml(site.state || '')}</td>
+            <td class="px-3 py-2.5 font-bold text-gray-900 whitespace-nowrap">
+                <a href="../sites/site_view_custom_form.php?id=${site.id}" class="hover:text-primary hover:underline flex items-center gap-1">
+                    <i class="fas fa-map-marker-alt text-primary/70 text-[10px]"></i>
+                    ${escapeHtml(site.site_name)}
+                </a>
+            </td>
+            <td class="px-3 py-2.5 whitespace-nowrap">
+                <span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    ${escapeHtml(site.project_name || 'XTPL')}
+                </span>
+            </td>
+            <td class="px-3 py-2.5 font-semibold text-gray-800 whitespace-nowrap max-w-[220px] truncate" title="${escapeHtml(site.bank_name || '')}">
+                ${escapeHtml(site.bank_name || '-')}
+            </td>
+            <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">${escapeHtml(site.city || '-')}, ${escapeHtml(site.state || '')}</td>
 
             <!-- 2A. Feasibility Delegation (3 cols) -->
             <td class="px-3 py-2.5 font-medium ${site.contractor_name ? 'text-purple-700' : 'text-gray-400'} whitespace-nowrap">
@@ -407,7 +539,7 @@ function renderTable() {
             <td class="px-3 py-2.5 text-gray-500 whitespace-nowrap">${formatDate(site.inst_delegated_at)}</td>
 
             <!-- 3. Survey / Feasibility Status (5 cols) -->
-            <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">${escapeHtml(site.contractor_name || 'ADV')}</td>
+            <td class="px-3 py-2.5 text-gray-700 whitespace-nowrap font-medium">${escapeHtml(site.contractor_name || 'ADV')}</td>
             <td class="px-3 py-2.5 text-gray-700 whitespace-nowrap">${escapeHtml(site.surveyor_name || '-')}</td>
             <td class="px-3 py-2.5 text-gray-500 whitespace-nowrap">${formatDate(site.feasibility_created_at)}</td>
             <td class="px-3 py-2.5 whitespace-nowrap">${feasBadge}</td>
@@ -450,9 +582,17 @@ function renderTable() {
 
             <!-- Actions (1 col) -->
             <td class="px-3 py-2.5 text-center whitespace-nowrap">
-                <a href="../sites/delegate.php?id=${site.id}" class="text-purple-600 hover:text-purple-800" title="Delegate Site">
-                    <i class="fas fa-share-alt"></i>
-                </a>
+                <div class="flex items-center justify-center gap-1.5">
+                    <a href="../sites/site_view_custom_form.php?id=${site.id}" class="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded" title="View Site Details">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="../sites/site_edit_custom_form.php?id=${site.id}" class="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded" title="Edit Site">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="../sites/delegate.php?id=${site.id}" class="p-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded" title="Delegate Site">
+                        <i class="fas fa-share-alt"></i>
+                    </a>
+                </div>
             </td>
         </tr>`;
     }).join('');
@@ -468,76 +608,32 @@ function getFeasibilityBadge(status) {
 
 function getMaterialBadge(status) {
     if (!status) return '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-[10px]">None</span>';
-    if (status === 'delivered') return '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold">Delivered</span>';
-    if (status === 'in_transit' || status === 'dispatched') return '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px]">In Transit</span>';
-    if (status === 'approved') return '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">Approved</span>';
-    return `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">${status}</span>`;
+    if (status === 'delivered') return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">Delivered</span>';
+    if (status === 'dispatched') return '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">Dispatched</span>';
+    return '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">Generated</span>';
 }
 
 function getInstallationBadge(status) {
-    if (!status) return '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-[10px]">Not Started</span>';
-    if (status === 'adv_approved' || status === 'completed') return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-semibold">Completed</span>';
-    if (status === 'submitted') return '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px]">Submitted</span>';
+    if (!status || status === 'pending') return '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-[10px]">Pending</span>';
+    if (status === 'completed' || status === 'adv_approved') return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-semibold">Completed</span>';
     if (status === 'in_progress') return '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">In Progress</span>';
     return `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">${status}</span>`;
 }
 
 function formatMilestone(status) {
-    if (!status) return 'Not Initiated';
-    if (status === 'pending_assignment') return 'Pending Assignment';
-    if (status === 'pending_materials') return 'Awaiting Materials';
-    if (status === 'materials_received') return 'Materials Received';
-    if (status === 'in_progress') return 'Form In Progress';
-    if (status === 'submitted') return 'Form Submitted';
-    if (status === 'adv_approved') return 'Approved & Finalized';
-    return status;
+    if (!status) return '-';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
-
-function showIpInfo(siteId) {
-    const site = state.sites.find(s => s.id === siteId);
-    if (!site) return;
-
-    document.getElementById('ip-modal-body').innerHTML = `
-        <div class="p-3 bg-gray-50 rounded-lg space-y-2">
-            <div class="flex justify-between border-b pb-1">
-                <span class="text-gray-500">Router Serial:</span>
-                <span class="font-mono font-semibold text-gray-800">${site.router_serial_number || 'N/A'}</span>
-            </div>
-            <div class="flex justify-between border-b pb-1">
-                <span class="text-gray-500">Router IP:</span>
-                <span class="font-mono font-semibold text-blue-600">${site.router_ip || 'N/A'}</span>
-            </div>
-            <div class="flex justify-between border-b pb-1">
-                <span class="text-gray-500">Network IP:</span>
-                <span class="font-mono font-semibold text-purple-600">${site.network_ip || 'N/A'}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-gray-500">ATM / Site IP:</span>
-                <span class="font-mono font-semibold text-emerald-600">${site.site_ip || 'N/A'}</span>
-            </div>
-        </div>`;
-    document.getElementById('ip-modal').classList.remove('hidden');
-}
-
-function closeIpModal() {
-    document.getElementById('ip-modal').classList.add('hidden');
-}
-
-function populateLHOs(lhos) {
-    const select = document.getElementById('lho-filter');
-    if (select.children.length > 1) return;
-    lhos.forEach(l => {
-        const opt = document.createElement('option');
-        opt.value = l;
-        opt.textContent = l;
-        select.appendChild(opt);
-    });
+function formatDate(d) {
+    if (!d) return '-';
+    try {
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) return '-';
+        return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch(e) {
+        return '-';
+    }
 }
 
 function renderPagination() {
@@ -573,7 +669,8 @@ function refreshData() {
 }
 
 function exportData() {
-    window.location.href = '../api/sites/index.php?export=1';
+    const projId = activeProjectId || '';
+    window.location.href = `../api/sites/index.php?export=1&project_id=${projId}`;
 }
 
 function escapeHtml(str) {
