@@ -305,7 +305,8 @@ class DispatchRepository extends BaseRepository {
                        tw.name as to_warehouse_name,
                        c.name as courier_name,
                        s.site_name as site_name,
-                       mr.id as mr_id
+                       mr.id as mr_id,
+                       CONCAT(cb.first_name, ' ', cb.last_name) as created_by_name
                 FROM `{$this->table}` d
                 LEFT JOIN companies fc ON d.from_company_id = fc.id
                 LEFT JOIN warehouses fw ON d.from_warehouse_id = fw.id
@@ -315,6 +316,7 @@ class DispatchRepository extends BaseRepository {
                 LEFT JOIN couriers c ON d.courier_id = c.id
                 LEFT JOIN sites s ON d.site_id = s.id
                 LEFT JOIN material_requests mr ON d.material_request_id = mr.id
+                LEFT JOIN users cb ON d.created_by = cb.id
                 WHERE 1=1";
         $params = [];
         $types = '';
@@ -361,14 +363,18 @@ class DispatchRepository extends BaseRepository {
             $types .= 's';
         }
         
-        // Company scope filter for contractors
+        // Company scope filter for contractors (both incoming to company and outgoing from company/contractor)
         if (!empty($filters['company_scope'])) {
             $companyId = $filters['company_scope']['company_id'];
             $warehouseIds = $filters['company_scope']['warehouse_ids'] ?? [];
             
             if (!empty($warehouseIds)) {
                 $placeholders = implode(',', array_fill(0, count($warehouseIds), '?'));
-                $sql .= " AND (d.to_company_id = ? OR d.from_warehouse_id IN ($placeholders))";
+                $sql .= " AND (d.to_company_id = ? OR d.from_company_id = ? OR (d.sender_type = 'company' AND d.sender_id = ?) OR d.from_warehouse_id IN ($placeholders))";
+                $params[] = $companyId;
+                $types .= 'i';
+                $params[] = $companyId;
+                $types .= 'i';
                 $params[] = $companyId;
                 $types .= 'i';
                 foreach ($warehouseIds as $wid) {
@@ -376,13 +382,17 @@ class DispatchRepository extends BaseRepository {
                     $types .= 'i';
                 }
             } else {
-                $sql .= " AND d.to_company_id = ?";
+                $sql .= " AND (d.to_company_id = ? OR d.from_company_id = ? OR (d.sender_type = 'company' AND d.sender_id = ?))";
+                $params[] = $companyId;
+                $types .= 'i';
+                $params[] = $companyId;
+                $types .= 'i';
                 $params[] = $companyId;
                 $types .= 'i';
             }
         }
         
-        $sql .= " ORDER BY d.dispatch_date DESC";
+        $sql .= " ORDER BY d.id DESC, d.dispatch_date DESC";
         
         return $this->db->getResults($sql, $params, $types);
     }

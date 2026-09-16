@@ -694,15 +694,21 @@ function goToPage(page) {
 }
 
 // Stock Entry Modal functions
+let serialCheckDebounceTimer = null;
+
 function openStockEntryModal() {
     document.getElementById('stock-entry-form').reset();
     document.getElementById('serial-numbers-container').innerHTML = `
-        <div class="flex gap-2">
-            <input type="text" name="serial_numbers[]" placeholder="Enter serial number"
-                class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-            <button type="button" onclick="addSerialNumberField()" class="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
-                <i class="fas fa-plus"></i>
-            </button>
+        <div class="serial-input-row">
+            <div class="flex gap-2">
+                <input type="text" name="serial_numbers[]" placeholder="Enter serial number"
+                    oninput="handleSerialInput(this)" onblur="checkSerialOnServer(this)"
+                    class="serial-input flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition">
+                <button type="button" onclick="addSerialNumberField()" class="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="serial-feedback text-xs mt-1 hidden"></div>
         </div>
     `;
     showQuantityFields();
@@ -750,15 +756,199 @@ function showSerialFields() {
 function addSerialNumberField() {
     const container = document.getElementById('serial-numbers-container');
     const div = document.createElement('div');
-    div.className = 'flex gap-2';
+    div.className = 'serial-input-row';
     div.innerHTML = `
-        <input type="text" name="serial_numbers[]" placeholder="Enter serial number"
-            class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-        <button type="button" onclick="this.parentElement.remove()" class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">
-            <i class="fas fa-minus"></i>
-        </button>
+        <div class="flex gap-2">
+            <input type="text" name="serial_numbers[]" placeholder="Enter serial number"
+                oninput="handleSerialInput(this)" onblur="checkSerialOnServer(this)"
+                class="serial-input flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition">
+            <button type="button" onclick="removeSerialNumberField(this)" class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition">
+                <i class="fas fa-minus"></i>
+            </button>
+        </div>
+        <div class="serial-feedback text-xs mt-1 hidden"></div>
     `;
     container.appendChild(div);
+    const newInput = div.querySelector('input');
+    if (newInput) newInput.focus();
+}
+
+function removeSerialNumberField(btn) {
+    const row = btn.closest('.serial-input-row');
+    if (row) {
+        row.remove();
+        revalidateAllSerials();
+    }
+}
+
+function handleSerialInput(inputEl) {
+    clearTimeout(serialCheckDebounceTimer);
+    revalidateAllSerials();
+    
+    serialCheckDebounceTimer = setTimeout(() => {
+        checkAllSerialsOnServer();
+    }, 400);
+}
+
+function revalidateAllSerials() {
+    const rows = document.querySelectorAll('#serial-numbers-container .serial-input-row');
+    const values = [];
+    const counts = {};
+    
+    rows.forEach(row => {
+        const input = row.querySelector('.serial-input');
+        if (input) {
+            const val = input.value.trim();
+            if (val) {
+                values.push(val);
+                counts[val] = (counts[val] || 0) + 1;
+            }
+        }
+    });
+    
+    let hasDuplicate = false;
+    
+    rows.forEach(row => {
+        const input = row.querySelector('.serial-input');
+        const feedback = row.querySelector('.serial-feedback');
+        if (!input || !feedback) return;
+        
+        const val = input.value.trim();
+        if (!val) {
+            input.classList.remove('border-red-500', 'bg-red-50/50', 'text-red-800', 'border-emerald-500', 'bg-emerald-50/30');
+            feedback.classList.add('hidden');
+            feedback.innerHTML = '';
+            return;
+        }
+        
+        if (counts[val] > 1) {
+            hasDuplicate = true;
+            input.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+            input.classList.add('border-red-500', 'bg-red-50/50', 'text-red-800');
+            feedback.classList.remove('hidden');
+            feedback.innerHTML = '<span class="text-red-600 font-medium flex items-center"><i class="fas fa-exclamation-triangle mr-1"></i>Duplicate serial number entered in form</span>';
+        } else {
+            // Keep normal or existing status if not form duplicate
+            if (feedback.innerHTML.includes('Duplicate serial number entered in form')) {
+                input.classList.remove('border-red-500', 'bg-red-50/50', 'text-red-800');
+                feedback.classList.add('hidden');
+                feedback.innerHTML = '';
+            }
+        }
+    });
+    
+    const generalErr = document.getElementById('serial_number-error');
+    if (generalErr) {
+        if (hasDuplicate) {
+            generalErr.textContent = 'Duplicate serial numbers found. Each serial number must be unique.';
+            generalErr.classList.remove('hidden');
+        } else if (generalErr.textContent.includes('Duplicate serial numbers')) {
+            generalErr.textContent = '';
+            generalErr.classList.add('hidden');
+        }
+    }
+    
+    return !hasDuplicate;
+}
+
+async function checkSerialOnServer(inputEl) {
+    if (!inputEl) return;
+    const row = inputEl.closest('.serial-input-row');
+    if (!row) return;
+    const feedback = row.querySelector('.serial-feedback');
+    const val = inputEl.value.trim();
+    
+    if (!val) return;
+    
+    // If it's already flagged as form duplicate, don't overwrite with server message
+    if (feedback && feedback.innerHTML.includes('Duplicate serial number entered in form')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`../api/inventory/assets/check-serial.php?serial_number=${encodeURIComponent(val)}`, { credentials: 'include' });
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            const existingList = (data.data.existing || []).map(s => String(s).trim().toLowerCase());
+            const isExisting = existingList.includes(val.toLowerCase());
+            
+            if (isExisting) {
+                inputEl.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+                inputEl.classList.add('border-red-500', 'bg-red-50/50', 'text-red-800');
+                if (feedback) {
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<span class="text-red-600 font-medium flex items-center"><i class="fas fa-times-circle mr-1"></i>Serial number already registered in inventory</span>`;
+                }
+            } else {
+                inputEl.classList.remove('border-red-500', 'bg-red-50/50', 'text-red-800');
+                inputEl.classList.add('border-emerald-500', 'bg-emerald-50/30');
+                if (feedback) {
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<span class="text-emerald-600 font-medium flex items-center"><i class="fas fa-check-circle mr-1"></i>Unique & Available</span>`;
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Serial check error:', e);
+    }
+}
+
+async function checkAllSerialsOnServer() {
+    const rows = document.querySelectorAll('#serial-numbers-container .serial-input-row');
+    const cleanSerials = [];
+    
+    rows.forEach(row => {
+        const input = row.querySelector('.serial-input');
+        const feedback = row.querySelector('.serial-feedback');
+        if (input) {
+            const val = input.value.trim();
+            if (val && (!feedback || !feedback.innerHTML.includes('Duplicate serial number entered in form'))) {
+                cleanSerials.push(val);
+            }
+        }
+    });
+    
+    if (cleanSerials.length === 0) return;
+    
+    try {
+        const response = await fetch('../api/inventory/assets/check-serial.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ serial_numbers: cleanSerials })
+        });
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            const existingList = (data.data.existing || []).map(s => String(s).trim().toLowerCase());
+            
+            rows.forEach(row => {
+                const input = row.querySelector('.serial-input');
+                const feedback = row.querySelector('.serial-feedback');
+                if (!input || !feedback) return;
+                
+                const val = input.value.trim();
+                if (!val) return;
+                
+                if (feedback.innerHTML.includes('Duplicate serial number entered in form')) return;
+                
+                if (existingList.includes(val.toLowerCase())) {
+                    input.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+                    input.classList.add('border-red-500', 'bg-red-50/50', 'text-red-800');
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<span class="text-red-600 font-medium flex items-center"><i class="fas fa-times-circle mr-1"></i>Serial number already registered in inventory</span>`;
+                } else {
+                    input.classList.remove('border-red-500', 'bg-red-50/50', 'text-red-800');
+                    input.classList.add('border-emerald-500', 'bg-emerald-50/30');
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<span class="text-emerald-600 font-medium flex items-center"><i class="fas fa-check-circle mr-1"></i>Unique & Available</span>`;
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Batch serial check error:', e);
+    }
 }
 
 async function saveStockEntry(event) {
@@ -788,6 +978,62 @@ async function saveStockEntry(event) {
         if (serialNumbers.length === 0) {
             showFieldError('serial_number', 'At least one serial number is required');
             return;
+        }
+        
+        // 1. Client-side form duplicate check
+        const isUniqueInForm = revalidateAllSerials();
+        if (!isUniqueInForm) {
+            showError('Duplicate serial numbers detected. Each serial number must be unique.');
+            return;
+        }
+        
+        // 2. Pre-save database existence check
+        const saveBtn = document.getElementById('save-entry-btn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Validating serials...';
+        
+        try {
+            const checkRes = await fetch('../api/inventory/assets/check-serial.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ serial_numbers: serialNumbers })
+            });
+            const checkData = await checkRes.json();
+            
+            if (checkData.success && checkData.data) {
+                if (checkData.data.duplicates_in_input && checkData.data.duplicates_in_input.length > 0) {
+                    revalidateAllSerials();
+                    showError(`Duplicate serials entered: ${checkData.data.duplicates_in_input.join(', ')}`);
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Add Stock';
+                    return;
+                }
+                
+                const existingList = (checkData.data.existing || []).map(s => String(s).trim());
+                if (existingList.length > 0) {
+                    const rows = document.querySelectorAll('#serial-numbers-container .serial-input-row');
+                    rows.forEach(row => {
+                        const input = row.querySelector('.serial-input');
+                        const feedback = row.querySelector('.serial-feedback');
+                        if (input && feedback) {
+                            const val = input.value.trim();
+                            if (existingList.some(e => e.toLowerCase() === val.toLowerCase())) {
+                                input.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+                                input.classList.add('border-red-500', 'bg-red-50/50', 'text-red-800');
+                                feedback.classList.remove('hidden');
+                                feedback.innerHTML = `<span class="text-red-600 font-medium flex items-center"><i class="fas fa-times-circle mr-1"></i>Serial number already registered in inventory</span>`;
+                            }
+                        }
+                    });
+                    showError(`Serial number(s) already registered in inventory: ${existingList.join(', ')}`);
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Add Stock';
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Pre-check error, proceeding to backend validation:', e);
         }
         
         payload.serial_numbers = serialNumbers;
@@ -822,11 +1068,11 @@ async function saveStockEntry(event) {
             showSuccess(data.message || 'Stock added successfully');
             loadStock();
         } else {
-            if (data.errors) {
-                Object.keys(data.errors).forEach(field => showFieldError(field, data.errors[field]));
-            } else {
-                showError(data.error?.message || 'Failed to add stock');
+            const fieldErrors = data.error?.details || data.errors;
+            if (fieldErrors && typeof fieldErrors === 'object') {
+                Object.keys(fieldErrors).forEach(field => showFieldError(field, fieldErrors[field]));
             }
+            showError(data.error?.message || data.message || 'Failed to add stock');
         }
     } catch (error) {
         console.error('Error saving stock:', error);

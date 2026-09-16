@@ -1,3 +1,4 @@
+<?php $baseUrl = defined('BASE_URL') ? BASE_URL : ($baseUrl ?? ''); ?>
 <header class="glass sticky top-0 z-30 border-b border-gray-200 px-4 md:px-6 py-4">
     <div class="flex items-center justify-between">
         <div class="pl-12 lg:pl-0">

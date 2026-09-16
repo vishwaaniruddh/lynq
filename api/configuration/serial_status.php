@@ -47,35 +47,50 @@ try {
 
     $db = DatabaseConfig::getInstance();
 
+    // Get serial numbers from query params
+    $serials = isset($_GET['serials']) && is_array($_GET['serials'])
+        ? array_values(array_unique(array_filter(array_map('trim', $_GET['serials']))))
+        : [];
+
     // Get product_id to determine if this is a router product
     $productId = isset($_GET['product_id']) ? (int)$_GET['product_id'] : null;
 
-    // If product_id provided, check if it's a router product
-    // Router products = serializable products in non-SIM categories (categories whose name doesn't contain 'SIM')
+    // Check if it's a router product (product name or category name contains 'router')
     $isRouterProduct = false;
     if ($productId) {
         $productRow = $db->getResults(
-            "SELECT p.id, c.name as category_name FROM products p 
+            "SELECT p.id, p.name as product_name, c.name as category_name FROM products p 
              LEFT JOIN product_categories c ON p.category_id = c.id 
              WHERE p.id = ? AND p.is_serializable = 1 LIMIT 1",
             [$productId], 'i'
         );
         if (!empty($productRow)) {
+            $productName = strtolower($productRow[0]['product_name'] ?? '');
             $categoryName = strtolower($productRow[0]['category_name'] ?? '');
-            // Not a router if category suggests SIM/telecom-only (no IP configuration needed)
-            $nonRouterKeywords = ['sim', 'sim card', 'simcard'];
-            $isNonRouter = false;
-            foreach ($nonRouterKeywords as $kw) {
-                if (strpos($categoryName, $kw) !== false) {
-                    $isNonRouter = true;
-                    break;
-                }
+            if (strpos($productName, 'router') !== false || strpos($categoryName, 'router') !== false) {
+                $isRouterProduct = true;
             }
-            $isRouterProduct = !$isNonRouter;
         }
-    } else {
-        // No product_id provided — check based on serials only (fall back to old behavior)
-        $isRouterProduct = true;
+    } elseif (!empty($serials)) {
+        // If no product_id was provided, check the assets table for these serials to see if they belong to a router product
+        $placeholders = implode(',', array_fill(0, count($serials), '?'));
+        $types = str_repeat('s', count($serials));
+        $assetRows = $db->getResults(
+            "SELECT a.id, p.name as product_name, c.name as category_name 
+             FROM assets a
+             JOIN products p ON a.product_id = p.id
+             LEFT JOIN product_categories c ON p.category_id = c.id
+             WHERE a.serial_number IN ($placeholders)
+             LIMIT 1",
+            $serials, $types
+        );
+        if (!empty($assetRows)) {
+            $pName = strtolower($assetRows[0]['product_name'] ?? '');
+            $cName = strtolower($assetRows[0]['category_name'] ?? '');
+            if (strpos($pName, 'router') !== false || strpos($cName, 'router') !== false) {
+                $isRouterProduct = true;
+            }
+        }
     }
 
     // If not a router product, return immediately with no statuses
@@ -85,11 +100,6 @@ try {
             'statuses' => []
         ], 'Not a router product — no configuration check needed');
     }
-
-    // Get serial numbers from query params
-    $serials = isset($_GET['serials']) && is_array($_GET['serials'])
-        ? array_values(array_unique(array_filter(array_map('trim', $_GET['serials']))))
-        : [];
 
     if (empty($serials)) {
         ApiResponse::success([

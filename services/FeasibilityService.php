@@ -558,7 +558,9 @@ class FeasibilityService {
             'customer_name' => $assignment['customer_name'] ?? '',
             'latitude' => $assignment['latitude'] ?? '',
             'longitude' => $assignment['longitude'] ?? '',
-            'zone' => $assignment['zone'] ?? ''
+            'zone' => $assignment['zone'] ?? '',
+            'project_id' => $assignment['project_id'] ?? null,
+            'project_name' => $assignment['project_name'] ?? ''
         ];
     }
     

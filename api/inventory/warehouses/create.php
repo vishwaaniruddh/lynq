@@ -97,25 +97,14 @@ try {
     }
     
     // Create warehouse
-    $warehouseId = $warehouseRepository->create($warehouseData);
+    $warehouse = $warehouseRepository->create($warehouseData);
+    $warehouseId = is_array($warehouse) ? (int)$warehouse['id'] : (int)$warehouse;
     
     // Get created warehouse with company details
-    $warehouse = $warehouseRepository->findWithCompany($warehouseId);
-    
-    // Log audit trail
-    $auditService = new InventoryAuditService();
-    $auditService->logAction(
-        'warehouse_created',
-        'warehouse',
-        $warehouseId,
-        $currentUser['id'],
-        null,
-        null,
-        'warehouse',
-        $warehouseId,
-        null,
-        $warehouseData
-    );
+    $warehouseWithCompany = $warehouseRepository->findWithCompany($warehouseId);
+    if ($warehouseWithCompany) {
+        $warehouse = $warehouseWithCompany;
+    }
     
     // Log API access
     $authMiddleware->logApiAccess($currentUser['id'], '/api/inventory/warehouses/create', 'POST', [
@@ -126,7 +115,7 @@ try {
     
     ApiResponse::success(['warehouse' => $warehouse], 'Warehouse created successfully', 201);
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("Inventory Warehouses API Error: " . $e->getMessage());
     ApiResponse::serverError('Failed to create warehouse: ' . $e->getMessage());
 }

@@ -155,7 +155,7 @@ class BulkInventoryService {
                             
                             // Check for duplicate in database
                             if ($this->assetRepository->serialNumberExists($serialNumber)) {
-                                $rowErrors[] = ['field' => 'serial_number', 'message' => "Serial number '$serialNumber' already exists in database"];
+                                $rowErrors[] = ['field' => 'serial_number', 'message' => "Serial number '$serialNumber' already registered in inventory"];
                             }
                             
                             // Check for duplicate within batch

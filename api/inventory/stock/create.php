@@ -119,6 +119,39 @@ try {
             ApiResponse::validationError(['serial_number' => 'At least one valid serial number is required']);
         }
         
+        // Check for duplicates within the submitted input array
+        $seen = [];
+        $duplicatesInInput = [];
+        foreach ($serialNumbers as $sn) {
+            if (isset($seen[$sn])) {
+                $duplicatesInInput[] = $sn;
+            } else {
+                $seen[$sn] = true;
+            }
+        }
+        $duplicatesInInput = array_values(array_unique($duplicatesInInput));
+        if (!empty($duplicatesInInput)) {
+            ApiResponse::validationError([
+                'serial_numbers' => 'Duplicate serial numbers in submission: ' . implode(', ', $duplicatesInInput) . '. Every item must have a unique serial number.'
+            ]);
+        }
+        
+        // Check if any of these serial numbers already exist in the database
+        $db = DatabaseConfig::getInstance();
+        $placeholders = str_repeat('?,', count($serialNumbers) - 1) . '?';
+        $types = str_repeat('s', count($serialNumbers));
+        $existingRows = $db->getResults(
+            "SELECT serial_number FROM assets WHERE serial_number IN ($placeholders)",
+            $serialNumbers,
+            $types
+        );
+        if (!empty($existingRows)) {
+            $existingSerials = array_column($existingRows, 'serial_number');
+            ApiResponse::validationError([
+                'serial_numbers' => 'The following serial number(s) are already registered in inventory: ' . implode(', ', $existingSerials) . '. Please provide unique serial numbers.'
+            ]);
+        }
+        
         // Additional data for assets
         $additionalData = [];
         if (!empty($input['warranty_expiry'])) {

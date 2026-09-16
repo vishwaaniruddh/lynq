@@ -935,89 +935,552 @@ function getRecommendedTemplateFields(purpose) {
 
         case 'feasibility':
             return [
+                // 1. ATM Information
                 {
-                    section_title: 'Power & Electrical Verification',
-                    field_key: 'earthing_voltage',
-                    field_label: 'Neutral to Earth Voltage (V)',
-                    field_type: 'number',
-                    placeholder: 'e.g. 1.2',
-                    help_text: 'Must be within 0 to 2.0 Volts',
-                    is_required: true,
-                    grid_width: 6
-                },
-                {
-                    section_title: 'Power & Electrical Verification',
-                    field_key: 'ups_power_type',
-                    field_label: 'UPS Availability',
-                    field_type: 'radio',
-                    is_required: true,
-                    grid_width: 6,
-                    options: [
-                        { label: 'Yes, Dedicated UPS', value: 'dedicated' },
-                        { label: 'Shared UPS', value: 'shared' },
-                        { label: 'No UPS (Raw Power Only)', value: 'raw' }
-                    ]
-                },
-                {
-                    section_title: 'Network Signal Check',
-                    field_key: 'strongest_operator',
-                    field_label: 'Strongest Operator Detected',
+                    section_title: 'ATM Information',
+                    field_key: 'no_of_atm',
+                    field_label: 'Number of ATMs',
                     field_type: 'select',
                     is_required: true,
-                    grid_width: 6,
+                    grid_width: 4,
                     options: [
-                        { label: 'Airtel (4G/5G)', value: 'airtel' },
-                        { label: 'Jio (4G/5G)', value: 'jio' },
-                        { label: 'Vodafone Idea (4G)', value: 'vi' },
-                        { label: 'BSNL', value: 'bsnl' }
+                        { label: '0 ATMs', value: '0' },
+                        { label: '1 ATM', value: '1' },
+                        { label: '2 ATMs', value: '2' },
+                        { label: '3 ATMs', value: '3' }
                     ]
                 },
                 {
-                    section_title: 'Network Signal Check',
-                    field_key: 'signal_strength_dbm',
-                    field_label: 'Signal Strength (dBm)',
-                    field_type: 'number',
-                    placeholder: 'e.g. -75',
-                    is_required: true,
-                    grid_width: 6
+                    section_title: 'ATM Information',
+                    field_key: 'atm_id_1',
+                    field_label: 'ATM 1 ID',
+                    field_type: 'text',
+                    placeholder: 'e.g. S1AC00112',
+                    is_required: false,
+                    grid_width: 4
                 },
                 {
-                    section_title: 'Antenna & Cable Routing',
-                    field_key: 'antenna_cable_length_mtr',
-                    field_label: 'Estimated Antenna Cable (Meters)',
-                    field_type: 'number',
-                    placeholder: 'e.g. 15',
+                    section_title: 'ATM Information',
+                    field_key: 'atm_1_status',
+                    field_label: 'ATM 1 Status',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'not_working' },
+                        { label: 'Under Maintenance', value: 'maintenance' }
+                    ]
+                },
+                {
+                    section_title: 'ATM Information',
+                    field_key: 'atm_id_2',
+                    field_label: 'ATM 2 ID',
+                    field_type: 'text',
+                    placeholder: 'e.g. S1AC00113',
                     is_required: false,
                     grid_width: 6
                 },
                 {
-                    section_title: 'Antenna & Cable Routing',
-                    field_key: 'cable_routing_feasible',
-                    field_label: 'Antenna Routing Feasible',
-                    field_type: 'radio',
-                    is_required: true,
+                    section_title: 'ATM Information',
+                    field_key: 'atm_2_status',
+                    field_label: 'ATM 2 Status',
+                    field_type: 'select',
+                    is_required: false,
                     grid_width: 6,
                     options: [
-                        { label: 'Yes, Direct Route', value: 'direct' },
-                        { label: 'Requires Wall Drilling', value: 'drilling' },
-                        { label: 'Requires Roof Permission', value: 'roof_permission' }
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'not_working' },
+                        { label: 'Under Maintenance', value: 'maintenance' }
                     ]
                 },
                 {
-                    section_title: 'Site Photos',
-                    field_key: 'earthing_meter_photo',
-                    field_label: 'Multimeter Voltage Photo',
+                    section_title: 'ATM Information',
+                    field_key: 'atm_id_3',
+                    field_label: 'ATM 3 ID',
+                    field_type: 'text',
+                    placeholder: 'e.g. S1AC00114',
+                    is_required: false,
+                    grid_width: 6
+                },
+                {
+                    section_title: 'ATM Information',
+                    field_key: 'atm_3_status',
+                    field_label: 'ATM 3 Status',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'not_working' },
+                        { label: 'Under Maintenance', value: 'maintenance' }
+                    ]
+                },
+
+                // 2. Network Information
+                {
+                    section_title: 'Network Information',
+                    field_key: 'operator',
+                    field_label: 'Primary Network Operator',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Airtel', value: 'Airtel' },
+                        { label: 'Jio', value: 'Jio' },
+                        { label: 'Vi', value: 'Vi' },
+                        { label: 'BSNL', value: 'BSNL' },
+                        { label: 'Other', value: 'Other' }
+                    ]
+                },
+                {
+                    section_title: 'Network Information',
+                    field_key: 'signal_status',
+                    field_label: 'Primary Signal Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Excellent', value: 'excellent' },
+                        { label: 'Good', value: 'good' },
+                        { label: 'Poor', value: 'poor' },
+                        { label: 'No Signal', value: 'no_signal' }
+                    ]
+                },
+                {
+                    section_title: 'Network Information',
+                    field_key: 'operator_2',
+                    field_label: 'Secondary Network Operator',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'None', value: '' },
+                        { label: 'Airtel', value: 'Airtel' },
+                        { label: 'Jio', value: 'Jio' },
+                        { label: 'Vi', value: 'Vi' },
+                        { label: 'BSNL', value: 'BSNL' },
+                        { label: 'Other', value: 'Other' }
+                    ]
+                },
+                {
+                    section_title: 'Network Information',
+                    field_key: 'signal_status_2',
+                    field_label: 'Secondary Signal Status',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Excellent', value: 'excellent' },
+                        { label: 'Good', value: 'good' },
+                        { label: 'Poor', value: 'poor' },
+                        { label: 'No Signal', value: 'no_signal' }
+                    ]
+                },
+                {
+                    section_title: 'Network Information',
+                    field_key: 'backroom_network_remark',
+                    field_label: 'Backroom Network Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'e.g. Signal drops inside the backroom...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Network Information',
+                    field_key: 'backroom_network_snap',
+                    field_label: 'Backroom Network Photo',
                     field_type: 'file',
                     is_required: true,
                     grid_width: 6,
                     validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
                 },
+
+                // 3. Power & UPS Infrastructure
                 {
-                    section_title: 'Site Photos',
-                    field_key: 'router_proposed_place_photo',
-                    field_label: 'Proposed Router Placement Snap',
-                    field_type: 'file',
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_available',
+                    field_label: 'UPS Available',
+                    field_type: 'select',
                     is_required: true,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'no_of_ups',
+                    field_label: 'Number of UPS',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: '1', value: '1' },
+                        { label: '2', value: '2' },
+                        { label: '3', value: '3' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_battery_backup',
+                    field_label: 'UPS Battery Backup',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Less than 30 min', value: 'less_than_30min' },
+                        { label: '30 min - 1 hour', value: '30min_to_1hr' },
+                        { label: '1 - 2 hours', value: '1hr_to_2hr' },
+                        { label: 'More than 2 hours', value: 'more_than_2hr' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_working_1',
+                    field_label: 'UPS 1 Working',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_working_2',
+                    field_label: 'UPS 2 Working',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_working_3',
+                    field_label: 'UPS 3 Working',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'power_socket_availability',
+                    field_label: 'Power Socket Availability',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Available', value: 'available' },
+                        { label: 'Not Available', value: 'not_available' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'power_socket_availability_ups',
+                    field_label: 'Power Socket for UPS',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Available', value: 'available' },
+                        { label: 'Not Available', value: 'not_available' }
+                    ]
+                },
+                {
+                    section_title: 'Power & UPS Infrastructure',
+                    field_key: 'ups_available_snap',
+                    field_label: 'UPS & Power Photo',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 4. Electrical Measurements
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'earthing',
+                    field_label: 'Earthing Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'earthing_voltage',
+                    field_label: 'Earthing Voltage (Neutral - Earth / E-N)',
+                    field_type: 'text',
+                    placeholder: 'e.g., 0.5V',
+                    help_text: 'Should ideally be less than 2.0V',
+                    is_required: false,
+                    grid_width: 6
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'power_fluctuation_en',
+                    field_label: 'Power Fluctuation E-N',
+                    field_type: 'text',
+                    placeholder: 'e.g., 220V',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'power_fluctuation_pe',
+                    field_label: 'Power Fluctuation P-E',
+                    field_type: 'text',
+                    placeholder: 'e.g., 0V',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'power_fluctuation_pn',
+                    field_label: 'Power Fluctuation P-N',
+                    field_type: 'text',
+                    placeholder: 'e.g., 220V',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'frequent_power_cut',
+                    field_label: 'Frequent Power Cut',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'frequent_power_cut_from',
+                    field_label: 'Power Cut From Time',
+                    field_type: 'text',
+                    placeholder: 'e.g., 14:00',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'frequent_power_cut_to',
+                    field_label: 'Power Cut To Time',
+                    field_type: 'text',
+                    placeholder: 'e.g., 16:00',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'frequent_power_cut_remark',
+                    field_label: 'Power Cut Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'e.g. Daily power cut during peak hours...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Electrical Measurements',
+                    field_key: 'earthing_snap',
+                    field_label: 'Earthing & Multimeter Photo',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 5. Site Access
+                {
+                    section_title: 'Site Access',
+                    field_key: 'em_lock_available',
+                    field_label: 'EM Lock Available',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Site Access',
+                    field_key: 'em_lock_password',
+                    field_label: 'EM Lock Password',
+                    field_type: 'text',
+                    placeholder: 'Password / PIN',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Site Access',
+                    field_key: 'password_received',
+                    field_label: 'Password Received',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Site Access',
+                    field_key: 'backroom_key_name',
+                    field_label: 'Backroom Key Contact Name',
+                    field_type: 'text',
+                    placeholder: 'Keyholder contact person',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Site Access',
+                    field_key: 'backroom_key_number',
+                    field_label: 'Backroom Key Contact Number',
+                    field_type: 'phone',
+                    placeholder: 'e.g. 9876543210',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Site Access',
+                    field_key: 'backroom_key_status',
+                    field_label: 'Backroom Key Status',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 4,
+                    options: [
+                        { label: 'Available', value: 'available' },
+                        { label: 'Not Available', value: 'not_available' }
+                    ]
+                },
+
+                // 6. Environmental Factors
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'router_antenna_position',
+                    field_label: 'Router / Antenna Position',
+                    field_type: 'text',
+                    placeholder: 'Proposed antenna mounting position',
+                    is_required: false,
+                    grid_width: 6
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'router_position',
+                    field_label: 'Router Position',
+                    field_type: 'text',
+                    placeholder: 'Proposed router placement in backroom',
+                    is_required: false,
+                    grid_width: 6
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'antenna_routing_detail',
+                    field_label: 'Antenna Routing Detail',
+                    field_type: 'textarea',
+                    placeholder: 'Cable pathway from antenna to router...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'nearest_shop_name',
+                    field_label: 'Nearest Shop Name',
+                    field_type: 'text',
+                    placeholder: 'Nearby shop or landmark',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'nearest_shop_number',
+                    field_label: 'Nearest Shop Number',
+                    field_type: 'phone',
+                    placeholder: 'Shopkeeper phone',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'nearest_shop_distance',
+                    field_label: 'Nearest Shop Distance',
+                    field_type: 'text',
+                    placeholder: 'e.g., 100m',
+                    is_required: false,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'backroom_disturbing_material',
+                    field_label: 'Backroom Disturbing / Hazardous Material',
+                    field_type: 'select',
+                    is_required: false,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'backroom_disturbing_material_remark',
+                    field_label: 'Disturbing Material Remarks',
+                    field_type: 'text',
+                    placeholder: 'e.g. Water leakage, exposed cables',
+                    is_required: false,
+                    grid_width: 6
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'router_antenna_snap',
+                    field_label: 'Proposed Router / Antenna Snapshot',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Environmental Factors',
+                    field_key: 'antenna_routing_snap',
+                    field_label: 'Antenna Routing Pathway Snapshot',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 7. Remarks
+                {
+                    section_title: 'Remarks & Final Assessment',
+                    field_key: 'remarks',
+                    field_label: 'General Inspection Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Provide comprehensive inspection observations, special access instructions, or notes for installation...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Remarks & Final Assessment',
+                    field_key: 'remarks_snap',
+                    field_label: 'Remarks / Overall Site Photo',
+                    field_type: 'file',
+                    is_required: false,
                     grid_width: 6,
                     validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
                 }
@@ -1025,66 +1488,636 @@ function getRecommendedTemplateFields(purpose) {
 
         case 'installation':
             return [
+                // 1. Vendor & Engineer Information
                 {
-                    section_title: 'Equipment Verification',
-                    field_key: 'scanned_router_serial',
-                    field_label: 'Scanned Router Serial Number',
+                    section_title: 'Vendor & Engineer Information',
+                    field_key: 'vendor_name',
+                    field_label: 'Vendor Name',
                     field_type: 'text',
-                    placeholder: 'e.g. RUT950_XXXXX',
+                    placeholder: 'Enter Vendor Name',
                     is_required: true,
-                    grid_width: 6
+                    grid_width: 4
                 },
                 {
-                    section_title: 'Equipment Verification',
-                    field_key: 'sim_cards_installed',
-                    field_label: 'SIM Cards Inserted',
-                    field_type: 'checkbox',
+                    section_title: 'Vendor & Engineer Information',
+                    field_key: 'engineer_name',
+                    field_label: 'Engineer Name',
+                    field_type: 'text',
+                    placeholder: 'Enter Engineer Name',
+                    is_required: true,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Vendor & Engineer Information',
+                    field_key: 'engineer_number',
+                    field_label: 'Engineer Phone Number',
+                    field_type: 'phone',
+                    placeholder: 'Enter 10-digit mobile number',
+                    is_required: true,
+                    grid_width: 4
+                },
+
+                // 2. Router Section
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_serial',
+                    field_label: 'Router Serial Number',
+                    field_type: 'text',
+                    placeholder: 'e.g. RTR-987654321',
+                    is_required: true,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_make',
+                    field_label: 'Router Make',
+                    field_type: 'text',
+                    placeholder: 'e.g. Teltonika / Advantech',
+                    is_required: true,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_model',
+                    field_label: 'Router Model',
+                    field_type: 'text',
+                    placeholder: 'e.g. RUT950 / Dual SIM Standard',
+                    is_required: true,
+                    grid_width: 4
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_fixed',
+                    field_label: 'Router Fixed',
+                    field_type: 'select',
                     is_required: true,
                     grid_width: 6,
                     options: [
-                        { label: 'Primary SIM (Slot 1)', value: 'sim1' },
-                        { label: 'Secondary SIM (Slot 2)', value: 'sim2' }
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
                     ]
                 },
                 {
-                    section_title: 'Testing & Connectivity',
-                    field_key: 'ping_latency_ms',
-                    field_label: 'Ping Latency to Gateway (ms)',
-                    field_type: 'number',
-                    placeholder: 'e.g. 35',
-                    is_required: true,
-                    grid_width: 6
-                },
-                {
-                    section_title: 'Testing & Connectivity',
-                    field_key: 'atm_live_tested',
-                    field_label: 'ATM Live Transaction Status',
-                    field_type: 'radio',
+                    section_title: 'Router Section',
+                    field_key: 'router_status',
+                    field_label: 'Router Status',
+                    field_type: 'select',
                     is_required: true,
                     grid_width: 6,
                     options: [
-                        { label: 'Success / Approved', value: 'success' },
-                        { label: 'Pending Bank Activation', value: 'pending' },
-                        { label: 'Failed', value: 'failed' }
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
                     ]
                 },
                 {
-                    section_title: 'Installation Snaps & Signoff',
-                    field_key: 'router_mounted_snap',
-                    field_label: 'Mounted Router & LED Lights Snap',
+                    section_title: 'Router Section',
+                    field_key: 'router_fixed_remarks',
+                    field_label: 'Router Fixed Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Remarks regarding router mounting...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_fixed_snaps',
+                    field_label: 'Router Fixed Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_status_remarks',
+                    field_label: 'Router Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Remarks regarding router operational status...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Router Section',
+                    field_key: 'router_status_snaps',
+                    field_label: 'Router Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 3. Adaptor Section
+                {
+                    section_title: 'Adaptor Section',
+                    field_key: 'adaptor_installed',
+                    field_label: 'Adaptor Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Adaptor Section',
+                    field_key: 'adaptor_status',
+                    field_label: 'Adaptor Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'Adaptor Section',
+                    field_key: 'adaptor_snaps',
+                    field_label: 'Adaptor Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Adaptor Section',
+                    field_key: 'adaptor_status_remarks',
+                    field_label: 'Adaptor Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Remarks regarding adaptor...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Adaptor Section',
+                    field_key: 'adaptor_status_snaps',
+                    field_label: 'Adaptor Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 4. LAN Cable Section
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_installed',
+                    field_label: 'LAN Cable Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_status',
+                    field_label: 'LAN Cable Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_install_remark',
+                    field_label: 'LAN Cable Install Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Remarks on LAN routing...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_install_snap',
+                    field_label: 'LAN Cable Install Photo',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_status_not_working_reasons',
+                    field_label: 'Not Working Reasons',
+                    field_type: 'textarea',
+                    placeholder: 'Explain why LAN connectivity failed...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_status_remark',
+                    field_label: 'LAN Cable Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'LAN Cable Section',
+                    field_key: 'lan_cable_status_snap',
+                    field_label: 'LAN Cable Status Photo',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 5. Antenna Section
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_installed',
+                    field_label: 'Antenna Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_status',
+                    field_label: 'Antenna Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_remarks',
+                    field_label: 'Antenna Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Antenna notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_snaps',
+                    field_label: 'Antenna Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_status_remarks',
+                    field_label: 'Antenna Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Antenna Section',
+                    field_key: 'antenna_status_snaps',
+                    field_label: 'Antenna Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 6. GPS & Wi-Fi Section
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_installed',
+                    field_label: 'GPS Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_status',
+                    field_label: 'GPS Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_remarks',
+                    field_label: 'GPS Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'GPS notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_snaps',
+                    field_label: 'GPS Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_status_remarks',
+                    field_label: 'GPS Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'gps_status_snaps',
+                    field_label: 'GPS Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_installed',
+                    field_label: 'WiFi Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_status',
+                    field_label: 'WiFi Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_remarks',
+                    field_label: 'WiFi Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'WiFi notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_snaps',
+                    field_label: 'WiFi Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_status_remarks',
+                    field_label: 'WiFi Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'GPS & Wi-Fi Section',
+                    field_key: 'wifi_status_snaps',
+                    field_label: 'WiFi Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 7. Airtel SIM Section
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_installed',
+                    field_label: 'Airtel SIM Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_status',
+                    field_label: 'Airtel SIM Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_remarks',
+                    field_label: 'Airtel SIM Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Airtel SIM notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_snaps',
+                    field_label: 'Airtel SIM Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_status_remarks',
+                    field_label: 'Airtel SIM Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Airtel SIM Section',
+                    field_key: 'airtel_sim_status_snaps',
+                    field_label: 'Airtel SIM Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 8. Vodafone SIM Section
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_installed',
+                    field_label: 'Vodafone SIM Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_status',
+                    field_label: 'Vodafone SIM Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_remarks',
+                    field_label: 'Vodafone SIM Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Vodafone SIM notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_snaps',
+                    field_label: 'Vodafone SIM Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_status_remarks',
+                    field_label: 'Vodafone SIM Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'Vodafone SIM Section',
+                    field_key: 'vodafone_sim_status_snaps',
+                    field_label: 'Vodafone SIM Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 9. JIO SIM Section
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_installed',
+                    field_label: 'JIO SIM Installed',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Yes', value: 'yes' },
+                        { label: 'No', value: 'no' }
+                    ]
+                },
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_status',
+                    field_label: 'JIO SIM Status',
+                    field_type: 'select',
+                    is_required: true,
+                    grid_width: 6,
+                    options: [
+                        { label: 'Working', value: 'working' },
+                        { label: 'Not Working', value: 'notWorking' }
+                    ]
+                },
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_remarks',
+                    field_label: 'JIO SIM Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'JIO SIM notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_snaps',
+                    field_label: 'JIO SIM Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_status_remarks',
+                    field_label: 'JIO SIM Status Remarks',
+                    field_type: 'textarea',
+                    placeholder: 'Status notes...',
+                    is_required: false,
+                    grid_width: 12
+                },
+                {
+                    section_title: 'JIO SIM Section',
+                    field_key: 'jio_sim_status_snaps',
+                    field_label: 'JIO SIM Status Photos',
+                    field_type: 'file',
+                    is_required: false,
+                    grid_width: 6,
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
+                },
+
+                // 10. Verification & Sign-off
+                {
+                    section_title: 'Verification & Sign-off',
+                    field_key: 'signature_image',
+                    field_label: 'Digital Signature',
                     field_type: 'file',
                     is_required: true,
                     grid_width: 6,
                     validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
                 },
                 {
-                    section_title: 'Installation Snaps & Signoff',
-                    field_key: 'bank_signoff_sheet',
-                    field_label: 'Bank / Guard Signoff Document',
+                    section_title: 'Verification & Sign-off',
+                    field_key: 'vendor_stamp',
+                    field_label: 'Vendor Stamp Photo',
                     field_type: 'file',
-                    is_required: true,
+                    is_required: false,
                     grid_width: 6,
-                    validation_rules: { allowed_extensions: 'jpg,jpeg,png,pdf', max_size_mb: 5, multiple: false }
+                    validation_rules: { allowed_extensions: 'jpg,jpeg,png', max_size_mb: 5, multiple: false }
                 }
             ];
 

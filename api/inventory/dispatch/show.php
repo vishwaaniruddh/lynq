@@ -62,9 +62,9 @@ try {
     } else {
         // Contractors can see dispatches to their company or from their warehouses
         $accessibleWarehouses = $inventoryAccessService->getAccessibleWarehouses($user['id']);
-        $accessibleWarehouseIds = array_column($accessibleWarehouses, 'id');
-        
         $hasAccess = ($dispatch['to_company_id'] == $user['company_id']) ||
+                     ($dispatch['from_company_id'] == $user['company_id']) ||
+                     (($dispatch['sender_type'] ?? '') === 'company' && ($dispatch['sender_id'] ?? 0) == $user['company_id']) ||
                      in_array($dispatch['from_warehouse_id'], $accessibleWarehouseIds);
     }
     

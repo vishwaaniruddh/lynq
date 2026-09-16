@@ -545,7 +545,7 @@ function renderTable() {
             <td class="px-3 py-2.5 whitespace-nowrap">${feasBadge}</td>
             <td class="px-3 py-2.5 text-center">
                 ${site.feasibility_check_id ? `
-                    <a href="../feasibility/view.php?id=${site.feasibility_check_id}" class="text-blue-600 hover:text-blue-800" title="View Feasibility">
+                    <a href="../shared/feasibility_view.php?id=${site.feasibility_check_id}" class="text-blue-600 hover:text-blue-800" title="View Feasibility">
                         <i class="fas fa-eye"></i>
                     </a>` : '<span class="text-gray-300">-</span>'
                 }

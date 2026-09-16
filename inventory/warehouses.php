@@ -543,13 +543,13 @@ async function saveWarehouse(event) {
             showSuccess(data.message || 'Warehouse saved successfully');
             loadWarehouses();
         } else {
-            if (data.errors) {
-                Object.keys(data.errors).forEach(field => {
-                    showFieldError(field, data.errors[field]);
+            const fieldErrors = data.error?.details || data.errors;
+            if (fieldErrors && typeof fieldErrors === 'object') {
+                Object.keys(fieldErrors).forEach(field => {
+                    showFieldError(field, fieldErrors[field]);
                 });
-            } else {
-                showError(data.error?.message || 'Failed to save warehouse');
             }
+            showError(data.error?.message || data.message || 'Failed to save warehouse');
         }
     } catch (error) {
         console.error('Error saving warehouse:', error);

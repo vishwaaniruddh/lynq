@@ -133,10 +133,20 @@ class ApiAuthMiddleware {
      */
     private function extractJWTToken(): ?string {
         // Try Authorization header first (Bearer token)
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+
+        if (empty($authHeader) && function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        }
+
+        if (empty($authHeader) && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        }
         
         if (preg_match('/Bearer\s+(.+)$/i', $authHeader, $matches)) {
-            return $matches[1];
+            return trim($matches[1]);
         }
         
         // Try cookie

@@ -3,6 +3,37 @@
  * Constants for ADV CRM Users Module
  */
 
+// Application Environment & Base URL Configuration
+if (!defined('BASE_URL')) {
+    $httpHost = $_SERVER['HTTP_HOST'] ?? '';
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    
+    if (stripos($httpHost, 'lynq.advantagesb.com') !== false) {
+        // Production: https://lynq.advantagesb.com/
+        define('BASE_URL', '');
+        define('APP_URL', 'https://lynq.advantagesb.com');
+    } elseif (!empty($scriptName) && (strpos($scriptName, '/lynq/') === 0 || $scriptName === '/lynq' || strpos($scriptName, '/lynq') === 0)) {
+        // Local system with /lynq subdirectory (e.g. localhost/lynq)
+        define('BASE_URL', '/lynq');
+        define('APP_URL', 'http://' . ($httpHost ?: 'localhost') . '/lynq');
+    } else {
+        // RDP / Root VirtualHost directly on localhost
+        define('BASE_URL', '');
+        define('APP_URL', 'http://' . ($httpHost ?: 'localhost'));
+    }
+}
+
+// Global variable for view templates
+$baseUrl = BASE_URL;
+
+// Helper function to generate URL paths
+if (!function_exists('url')) {
+    function url(string $path = ''): string {
+        $path = ltrim($path, '/');
+        return BASE_URL . ($path !== '' ? '/' . $path : '');
+    }
+}
+
 // Company Types
 define('COMPANY_TYPE_ADV', 'ADV');
 define('COMPANY_TYPE_CONTRACTOR', 'CONTRACTOR');

@@ -897,6 +897,9 @@ class MenuService {
      * Render menu HTML for a user
      */
     public function renderMenuHtml($userId, $currentPage = '', $baseUrl = '') {
+        if ($baseUrl === '' && defined('BASE_URL')) {
+            $baseUrl = BASE_URL;
+        }
         $visibleMenus = $this->getVisibleMenus($userId);
         $user = $this->userModel->findWithRelations($userId);
         $isAdvUser = $user && strtoupper($user['company_type']) === 'ADV';

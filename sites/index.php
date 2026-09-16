@@ -328,18 +328,104 @@ ob_start();
     </div>
 </div>
 
+<!-- Generate Material Request Modal -->
+<div id="material-request-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMaterialRequestModal()"></div>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full relative z-10 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Generate Material Request</h3>
+                    <p class="text-sm text-gray-500">Site: <span id="material-request-site-name" class="font-medium text-primary"></span></p>
+                </div>
+                <button onclick="closeMaterialRequestModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <!-- Material Master Selection -->
+                <div>
+                    <label for="material-master-select" class="block text-sm font-medium text-gray-700 mb-1">
+                        Select Material Master <span class="text-red-500">*</span>
+                    </label>
+                    <select id="material-master-select" onchange="onMaterialMasterChange()" 
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+                        <option value="">-- Select a Material Master --</option>
+                    </select>
+                    <p id="material-master-error" class="mt-1 text-sm text-red-500 hidden">Please select a Material Master</p>
+                </div>
+                
+                <!-- Product Preview Section -->
+                <div id="product-preview-section" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-700">Products in this Material Master</h4>
+                        <span id="product-count-badge" class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"></span>
+                    </div>
+                    <div class="border rounded-lg overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 uppercase">Product</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 uppercase">SKU</th>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 uppercase">Category</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="product-preview-tbody" class="divide-y">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <div class="flex items-center text-xs text-blue-700">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <span>These products will be requested for the selected site.</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty State when no master selected -->
+                <div id="no-master-selected" class="py-8 text-center text-gray-500">
+                    <i class="fas fa-clipboard-list text-4xl mb-3 text-gray-300"></i>
+                    <p class="text-sm">Select a Material Master to preview products</p>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl sticky bottom-0">
+                <button type="button" onclick="closeMaterialRequestModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-xs font-semibold">
+                    Cancel
+                </button>
+                <button type="button" onclick="confirmMaterialRequest()" id="confirm-material-request-btn" 
+                    class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600 transition text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center" disabled>
+                    <i class="fas fa-check mr-2"></i>Confirm Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+const MATERIAL_MASTERS_API = '../api/material-masters';
+const MATERIAL_REQUESTS_API = '../api/material-requests';
+
 let projectsList = [];
 let activeProjectId = null;
 
 const state = {
     sites: [],
     pagination: { page: 1, limit: 20, total: 0, total_pages: 0 },
-    filters: { search: '', project_id: '', bank_name: '', status: '', delegation: '', material: '', installation: '' }
+    filters: { search: '', project_id: '', bank_name: '', status: '', delegation: '', material: '', installation: '' },
+    materialRequest: {
+        selectedSiteId: null,
+        selectedSiteName: '',
+        selectedMasterId: null,
+        selectedMasterData: null,
+        materialMasters: []
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
     loadLookups();
+    loadMaterialMastersForSelection();
     setupEventListeners();
 });
 
@@ -597,7 +683,7 @@ function renderTable() {
         // Feasibility badge
         const feasBadge = getFeasibilityBadge(site.feasibility_approval_status || site.feasibility_status);
         // Material badge
-        const matBadge = getMaterialBadge(site.material_req_status || site.dispatch_status);
+        const matBadge = getMaterialBadge(site.material_req_status || site.dispatch_status, site);
         // Installation badge
         const instBadge = getInstallationBadge(site.installation_status);
 
@@ -642,7 +728,7 @@ function renderTable() {
             <td class="px-3 py-2.5 whitespace-nowrap">${feasBadge}</td>
             <td class="px-3 py-2.5 text-center">
                 ${site.feasibility_check_id ? `
-                    <a href="../feasibility/view.php?id=${site.feasibility_check_id}" class="text-blue-600 hover:text-blue-800" title="View Feasibility">
+                    <a href="../shared/feasibility_view.php?id=${site.feasibility_check_id}" class="text-blue-600 hover:text-blue-800" title="View Feasibility">
                         <i class="fas fa-eye"></i>
                     </a>` : '<span class="text-gray-300">-</span>'
                 }
@@ -703,11 +789,252 @@ function getFeasibilityBadge(status) {
     return `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">${status}</span>`;
 }
 
-function getMaterialBadge(status) {
-    if (!status) return '<span class="px-2 py-0.5 bg-gray-100 text-gray-400 rounded text-[10px]">None</span>';
-    if (status === 'delivered') return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">Delivered</span>';
-    if (status === 'dispatched') return '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">Dispatched</span>';
-    return '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">Generated</span>';
+function getMaterialBadge(status, site) {
+    if (!status || status === 'None' || status === 'not_requested' || status === 'not_generated') {
+        const safeName = site && site.site_name ? escapeHtml(site.site_name).replace(/'/g, "\\'") : '';
+        const siteId = site ? site.id : 0;
+        return `<button onclick="openMaterialRequestModal(${siteId}, '${safeName}')" 
+            class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-semibold inline-flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+            <i class="fas fa-plus text-[9px]"></i>Generate
+        </button>`;
+    }
+    if (status === 'delivered') return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-semibold">Delivered</span>';
+    if (status === 'dispatched') return '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-semibold">Dispatched</span>';
+    if (status === 'approved') return '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold">Approved</span>';
+    if (status === 'requested') return '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">Requested</span>';
+    return `<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-semibold">${escapeHtml(status)}</span>`;
+}
+
+// ===========================================
+// Material Request Modal Functions
+// ===========================================
+
+// Load Material Masters from API for selection
+async function loadMaterialMastersForSelection() {
+    try {
+        const response = await fetch(`${MATERIAL_MASTERS_API}/list.php?status=active&limit=100`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+            state.materialRequest.materialMasters = data.data.material_masters || [];
+            updateMaterialMastersDropdown();
+        } else {
+            console.error('Failed to load material masters:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading material masters:', error);
+    }
+}
+
+// Update Material Masters dropdown
+function updateMaterialMastersDropdown() {
+    const select = document.getElementById('material-master-select');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Select a Material Master --</option>';
+    state.materialRequest.materialMasters.forEach(master => {
+        const option = document.createElement('option');
+        option.value = master.id;
+        option.textContent = `${master.name} (${master.product_count || 0} products)`;
+        select.appendChild(option);
+    });
+}
+
+// Open material request modal
+function openMaterialRequestModal(siteId, siteName) {
+    const site = state.sites.find(s => s.id === siteId);
+    if (site && site.material_req_status && site.material_req_status !== 'not_requested' && site.material_req_status !== 'None') {
+        showToast('This site already has an active material request', 'warning');
+        return;
+    }
+    
+    state.materialRequest.selectedSiteId = siteId;
+    state.materialRequest.selectedSiteName = siteName;
+    state.materialRequest.selectedMasterId = null;
+    state.materialRequest.selectedMasterData = null;
+    
+    document.getElementById('material-request-site-name').textContent = siteName;
+    document.getElementById('material-master-select').value = '';
+    document.getElementById('product-preview-section').classList.add('hidden');
+    document.getElementById('no-master-selected').classList.remove('hidden');
+    document.getElementById('confirm-material-request-btn').disabled = true;
+    document.getElementById('material-master-error').classList.add('hidden');
+    
+    document.getElementById('material-request-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Close material request modal
+function closeMaterialRequestModal() {
+    document.getElementById('material-request-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    
+    state.materialRequest.selectedSiteId = null;
+    state.materialRequest.selectedSiteName = '';
+    state.materialRequest.selectedMasterId = null;
+    state.materialRequest.selectedMasterData = null;
+}
+
+// Handle Material Master selection change
+async function onMaterialMasterChange() {
+    const select = document.getElementById('material-master-select');
+    const masterId = parseInt(select.value);
+    const previewSection = document.getElementById('product-preview-section');
+    const noMasterSelected = document.getElementById('no-master-selected');
+    const confirmBtn = document.getElementById('confirm-material-request-btn');
+    const errorEl = document.getElementById('material-master-error');
+    
+    errorEl.classList.add('hidden');
+    
+    if (!masterId) {
+        previewSection.classList.add('hidden');
+        noMasterSelected.classList.remove('hidden');
+        confirmBtn.disabled = true;
+        state.materialRequest.selectedMasterId = null;
+        state.materialRequest.selectedMasterData = null;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${MATERIAL_MASTERS_API}/detail.php?id=${masterId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            const master = data.data.material_master;
+            state.materialRequest.selectedMasterId = masterId;
+            state.materialRequest.selectedMasterData = master;
+            
+            noMasterSelected.classList.add('hidden');
+            previewSection.classList.remove('hidden');
+            
+            const itemCount = master.items ? master.items.length : 0;
+            document.getElementById('product-count-badge').textContent = `${itemCount} products`;
+            
+            renderProductPreview(master);
+            confirmBtn.disabled = false;
+        } else {
+            showToast(data.message || 'Failed to load material master details', 'error');
+            previewSection.classList.add('hidden');
+            noMasterSelected.classList.remove('hidden');
+            confirmBtn.disabled = true;
+        }
+    } catch (error) {
+        console.error('Error loading master details:', error);
+        showToast('Failed to load material master details', 'error');
+        previewSection.classList.add('hidden');
+        noMasterSelected.classList.remove('hidden');
+        confirmBtn.disabled = true;
+    }
+}
+
+// Render product preview table
+function renderProductPreview(master) {
+    const tbody = document.getElementById('product-preview-tbody');
+    const items = master.items || [];
+    
+    if (items.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="px-4 py-4 text-center text-gray-500">No products in this Material Master</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = items.map(item => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2.5">
+                <div class="flex items-center">
+                    <div class="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mr-2.5">
+                        <i class="fas fa-box text-blue-500 text-xs"></i>
+                    </div>
+                    <span class="font-medium text-gray-800">${escapeHtml(item.product_name || 'Unknown')}</span>
+                </div>
+            </td>
+            <td class="px-4 py-2.5 text-gray-600 font-mono">${escapeHtml(item.product_sku || '-')}</td>
+            <td class="px-4 py-2.5">
+                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">${escapeHtml(item.category_name || '-')}</span>
+            </td>
+            <td class="px-4 py-2.5 text-right">
+                <span class="font-bold text-primary">${item.quantity}</span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Confirm material request
+async function confirmMaterialRequest() {
+    const { selectedSiteId, selectedMasterId } = state.materialRequest;
+    
+    if (!selectedSiteId) {
+        showToast('No site selected', 'error');
+        return;
+    }
+    
+    if (!selectedMasterId) {
+        document.getElementById('material-master-error').classList.remove('hidden');
+        return;
+    }
+    
+    const confirmBtn = document.getElementById('confirm-material-request-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+    
+    try {
+        const response = await fetch(`${MATERIAL_REQUESTS_API}/create.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                site_id: selectedSiteId,
+                material_master_id: selectedMasterId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeMaterialRequestModal();
+            showToast('Material request generated successfully!', 'success');
+            loadSites();
+        } else {
+            if (data.code === 'DUPLICATE_REQUEST') {
+                showToast('This site already has an active material request', 'warning');
+            } else {
+                showToast(data.message || 'Failed to create material request', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error creating material request:', error);
+        showToast('Failed to create material request', 'error');
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirm Request';
+    }
+}
+
+function showToast(message, type = 'info') {
+    const colors = {
+        success: 'bg-emerald-600',
+        error: 'bg-red-600',
+        warning: 'bg-amber-500',
+        info: 'bg-indigo-600'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `fixed top-5 right-5 z-50 ${colors[type] || colors.info} text-white px-5 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2.5 text-xs font-semibold animate-fade-in transition-all`;
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-3 hover:opacity-75">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 function getInstallationBadge(status) {

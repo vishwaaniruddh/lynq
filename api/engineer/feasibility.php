@@ -75,14 +75,24 @@ try {
  * Requirements: 4.4
  */
 function handleGetRequest($feasibilityService, $authMiddleware, $user) {
-    if (!isset($_GET['assignment_id']) || (int)$_GET['assignment_id'] <= 0) {
+    $assignmentId = isset($_GET['assignment_id']) ? (int)$_GET['assignment_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
+    
+    if ($assignmentId <= 0 && isset($_GET['site_id'])) {
+        $siteId = (int)$_GET['site_id'];
+        $db = DatabaseConfig::getInstance();
+        $sql = "SELECT id FROM engineer_assignments WHERE site_id = ? AND engineer_id = ? ORDER BY id DESC LIMIT 1";
+        $res = $db->getResults($sql, [$siteId, $user['id']], 'ii');
+        if (!empty($res)) {
+            $assignmentId = (int)$res[0]['id'];
+        }
+    }
+    
+    if ($assignmentId <= 0) {
         ApiResponse::validationError(
-            ['assignment_id' => ['Assignment ID is required']],
+            ['assignment_id' => ['Assignment ID or Site ID is required']],
             'Validation failed'
         );
     }
-    
-    $assignmentId = (int)$_GET['assignment_id'];
     
     // Verify engineer has access to this assignment
     $siteAccessService = new SiteAccessService();
@@ -123,15 +133,25 @@ function handlePostRequest($feasibilityService, $authMiddleware, $user) {
         $input = $_POST;
     }
     
+    $assignmentId = isset($input['assignment_id']) ? (int)$input['assignment_id'] : (isset($input['id']) ? (int)$input['id'] : 0);
+    
+    if ($assignmentId <= 0 && isset($input['site_id'])) {
+        $siteId = (int)$input['site_id'];
+        $db = DatabaseConfig::getInstance();
+        $sql = "SELECT id FROM engineer_assignments WHERE site_id = ? AND engineer_id = ? ORDER BY id DESC LIMIT 1";
+        $res = $db->getResults($sql, [$siteId, $user['id']], 'ii');
+        if (!empty($res)) {
+            $assignmentId = (int)$res[0]['id'];
+        }
+    }
+    
     // Validate assignment_id
-    if (!isset($input['assignment_id']) || (int)$input['assignment_id'] <= 0) {
+    if ($assignmentId <= 0) {
         ApiResponse::validationError(
-            ['assignment_id' => ['Assignment ID is required']],
+            ['assignment_id' => ['Assignment ID or Site ID is required']],
             'Validation failed'
         );
     }
-    
-    $assignmentId = (int)$input['assignment_id'];
     
     // Verify engineer has access to this assignment
     $siteAccessService = new SiteAccessService();
@@ -140,8 +160,9 @@ function handlePostRequest($feasibilityService, $authMiddleware, $user) {
         ApiResponse::forbidden($accessResult['message']);
     }
     
-    // Remove assignment_id from data as it's handled separately
+    // Remove assignment_id and site_id from data as it's handled separately
     unset($input['assignment_id']);
+    unset($input['site_id']);
     
     // Create feasibility check (Requirement 4.4)
     $result = $feasibilityService->createFeasibilityCheck($assignmentId, $input, $user['id']);

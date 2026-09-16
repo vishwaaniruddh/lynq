@@ -24,7 +24,7 @@ if (isContractorUser() && !isAdvUser()) {
     exit;
 }
 
-$baseUrl = '';
+$baseUrl = BASE_URL;
 $pageTitle = 'Dashboard';
 $currentPage = 'dashboard';
 $isLoggedIn = true;

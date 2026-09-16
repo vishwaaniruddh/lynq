@@ -360,7 +360,7 @@ class MenuService2 {
     private function filterMenusByPermission(array $items, $userId, bool $isAdvUser) {
         $filtered = [];
         $user = $this->userModel->findWithRelations($userId);
-        $isContractorUser = strtoupper($user['company_type']) === 'CONTRACTOR';
+        $isContractorUser = strtoupper($user['company_type'] ?? '') === 'CONTRACTOR';
         $isEngineer = $isContractorUser && !isContractorAdmin($userId);
         
         foreach ($items as $item) {
@@ -372,11 +372,7 @@ class MenuService2 {
                 continue;
             }
             
-            if (isset($item['adv_only']) && $item['adv_only'] && !$isAdvUser) continue;
-            if (isset($item['contractor_only']) && $item['contractor_only'] && (!$isContractorUser || $isEngineer)) continue;
-            if (isset($item['engineer_only']) && $item['engineer_only'] && !$isEngineer) continue;
-            
-            if ($item['permission'] === null || $this->hasPermission($userId, $item['permission'])) {
+            if ($this->isMenuItemVisible($item, $userId, $isAdvUser)) {
                 $filtered[] = $item;
             }
         }
@@ -500,8 +496,20 @@ class MenuService2 {
         return $allItems;
     }
     
-    public function hasPermission($userId, $permission) {
+    public function hasPermission($userId, $permission, $isAdvUser = null) {
         if ($permission === null) return true;
+        if ($isAdvUser === null) {
+            $user = $this->userModel->findWithRelations($userId);
+            $isAdvUser = $user && strtoupper($user['company_type'] ?? '') === 'ADV';
+        }
+        if ($isAdvUser && (
+            strpos($permission, 'inventory.') === 0 ||
+            strpos($permission, 'ip_configuration.') === 0 ||
+            strpos($permission, 'feasibility.') === 0 ||
+            strpos($permission, 'installation.') === 0
+        )) {
+            return true;
+        }
         return $this->permissionEngine->can($userId, $permission);
     }
 }

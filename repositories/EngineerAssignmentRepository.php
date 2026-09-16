@@ -17,12 +17,14 @@ class EngineerAssignmentRepository extends BaseRepository {
     public function findById(int $id): ?array {
         $sql = "SELECT a.*, s.site_name, s.lho, s.city, s.state, s.country, s.address,
                        s.latitude, s.longitude, s.bank_name, s.customer_name, s.zone,
+                       s.project_id, p.name as project_name,
                        s.company_id as adv_company_id, d.contractor_id, d.status as delegation_status,
                        c.name as contractor_name,
                        CONCAT(e.first_name, ' ', e.last_name) as engineer_name, e.email as engineer_email,
                        CONCAT(u.first_name, ' ', u.last_name) as assigned_by_name
                 FROM `{$this->table}` a
                 JOIN `sites` s ON a.site_id = s.id
+                LEFT JOIN `projects` p ON s.project_id = p.id
                 JOIN `site_delegations` d ON a.delegation_id = d.id
                 JOIN `companies` c ON d.contractor_id = c.id
                 JOIN `users` e ON a.engineer_id = e.id

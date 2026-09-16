@@ -1,30 +1,20 @@
 <?php
 /**
- * Feasibility Check Form Page
+ * Dynamic Feasibility Check Form Page
  * 
- * Displays the feasibility check form for engineers to complete site assessments.
- * Shows read-only master site information and allows input of feasibility data.
+ * Displays the dynamic feasibility check form driven by Custom Forms Master.
+ * Shows read-only master site information and dynamically renders project-specific
+ * or global custom form fields and sections.
  * Also handles rejection feedback display and resubmission workflow.
  * 
  * Requirements: 4.1, 4.2, 4.3, 5.1-5.6, 6.1, 7.1, 7.2, 7.3, 9.1, 9.2, 9.4, 12.1, 12.2, 12.3
- * - 4.1: Redirect to feasibility form with master site information pre-populated
- * - 4.2: Display read-only master site information
- * - 4.3: Validate all required fields before submission
- * - 5.1-5.6: Capture comprehensive site infrastructure details
- * - 6.1: Include image upload fields for key infrastructure components
- * - 7.1-7.3: Include remarks text field with 2000 character limit
- * - 9.1: Display uploaded images as visible thumbnail previews (150x150 pixels)
- * - 9.2: Display full-size image in lightbox modal when thumbnail is clicked
- * - 9.4: Display all thumbnails in a grid layout when multiple images exist
- * - 12.1: Display rejection reason prominently
- * - 12.2: Highlight rejected sections with visual indicators (red border/background)
- * - 12.3: Allow modification only of rejected sections
  */
 
 require_once __DIR__ . '/../config/autoload.php';
 require_once __DIR__ . '/../services/FeasibilityService.php';
 require_once __DIR__ . '/../services/FeasibilityReviewService.php';
 require_once __DIR__ . '/../services/SiteAccessService.php';
+require_once __DIR__ . '/../models/CustomForm.php';
 require_once __DIR__ . '/../views/components/image_thumbnail.php';
 require_once __DIR__ . '/../views/components/lightbox.php';
 
@@ -128,31 +118,128 @@ if (!$viewMode && !$resubmitMode && $feasibilityStatus !== 'ada_submitted') {
     exit;
 }
 
+// ========================================================
+// DYNAMIC FORM RESOLUTION & FIELD MAPPING
+// ========================================================
+$customFormModel = new CustomForm();
+$targetProjectId = !empty($siteInfo['project_id']) ? (int)$siteInfo['project_id'] : null;
+$customForm = $customFormModel->findFormForProject('feasibility', $targetProjectId);
+
+$dynamicFields = $customForm['fields'] ?? [];
+
+// Fallback: If no active custom form schema exists in database, use standard 7-section template
+if (empty($dynamicFields)) {
+    $dynamicFields = [
+        // 1. ATM Information
+        ['section_title' => 'ATM Information', 'field_key' => 'no_of_atm', 'field_label' => 'Number of ATMs', 'field_type' => 'select', 'is_required' => 1, 'grid_width' => 4, 'options' => [['label' => '0 ATMs', 'value' => '0'], ['label' => '1 ATM', 'value' => '1'], ['label' => '2 ATMs', 'value' => '2'], ['label' => '3 ATMs', 'value' => '3']]],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_id_1', 'field_label' => 'ATM 1 ID', 'field_type' => 'text', 'placeholder' => 'e.g. S1AC00112', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_1_status', 'field_label' => 'ATM 1 Status', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Working', 'value' => 'working'], ['label' => 'Not Working', 'value' => 'not_working'], ['label' => 'Under Maintenance', 'value' => 'maintenance']]],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_id_2', 'field_label' => 'ATM 2 ID', 'field_type' => 'text', 'placeholder' => 'e.g. S1AC00113', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_2_status', 'field_label' => 'ATM 2 Status', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Working', 'value' => 'working'], ['label' => 'Not Working', 'value' => 'not_working'], ['label' => 'Under Maintenance', 'value' => 'maintenance']]],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_id_3', 'field_label' => 'ATM 3 ID', 'field_type' => 'text', 'placeholder' => 'e.g. S1AC00114', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'ATM Information', 'field_key' => 'atm_3_status', 'field_label' => 'ATM 3 Status', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Working', 'value' => 'working'], ['label' => 'Not Working', 'value' => 'not_working'], ['label' => 'Under Maintenance', 'value' => 'maintenance']]],
+
+        // 2. Network Information
+        ['section_title' => 'Network Information', 'field_key' => 'operator', 'field_label' => 'Primary Network Operator', 'field_type' => 'select', 'is_required' => 1, 'grid_width' => 6, 'options' => [['label' => 'Airtel', 'value' => 'Airtel'], ['label' => 'Jio', 'value' => 'Jio'], ['label' => 'Vi', 'value' => 'Vi'], ['label' => 'BSNL', 'value' => 'BSNL'], ['label' => 'Other', 'value' => 'Other']]],
+        ['section_title' => 'Network Information', 'field_key' => 'signal_status', 'field_label' => 'Primary Signal Status', 'field_type' => 'select', 'is_required' => 1, 'grid_width' => 6, 'options' => [['label' => 'Excellent', 'value' => 'excellent'], ['label' => 'Good', 'value' => 'good'], ['label' => 'Poor', 'value' => 'poor'], ['label' => 'No Signal', 'value' => 'no_signal']]],
+        ['section_title' => 'Network Information', 'field_key' => 'operator_2', 'field_label' => 'Secondary Network Operator', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'None', 'value' => ''], ['label' => 'Airtel', 'value' => 'Airtel'], ['label' => 'Jio', 'value' => 'Jio'], ['label' => 'Vi', 'value' => 'Vi'], ['label' => 'BSNL', 'value' => 'BSNL'], ['label' => 'Other', 'value' => 'Other']]],
+        ['section_title' => 'Network Information', 'field_key' => 'signal_status_2', 'field_label' => 'Secondary Signal Status', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Excellent', 'value' => 'excellent'], ['label' => 'Good', 'value' => 'good'], ['label' => 'Poor', 'value' => 'poor'], ['label' => 'No Signal', 'value' => 'no_signal']]],
+        ['section_title' => 'Network Information', 'field_key' => 'backroom_network_remark', 'field_label' => 'Backroom Network Remarks', 'field_type' => 'textarea', 'placeholder' => 'e.g. Signal drops inside the backroom...', 'is_required' => 0, 'grid_width' => 12],
+        ['section_title' => 'Network Information', 'field_key' => 'backroom_network_snap', 'field_label' => 'Backroom Network Photo', 'field_type' => 'file', 'is_required' => 1, 'grid_width' => 6],
+
+        // 3. Power & UPS Infrastructure
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_available', 'field_label' => 'UPS Available', 'field_type' => 'select', 'is_required' => 1, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'no_of_ups', 'field_label' => 'Number of UPS', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => '1', 'value' => '1'], ['label' => '2', 'value' => '2'], ['label' => '3', 'value' => '3']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_battery_backup', 'field_label' => 'UPS Battery Backup', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Less than 30 min', 'value' => 'less_than_30min'], ['label' => '30 min - 1 hour', 'value' => '30min_to_1hr'], ['label' => '1 - 2 hours', 'value' => '1hr_to_2hr'], ['label' => 'More than 2 hours', 'value' => 'more_than_2hr']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_working_1', 'field_label' => 'UPS 1 Working', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_working_2', 'field_label' => 'UPS 2 Working', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_working_3', 'field_label' => 'UPS 3 Working', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'power_socket_availability', 'field_label' => 'Power Socket Availability', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Available', 'value' => 'available'], ['label' => 'Not Available', 'value' => 'not_available']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'power_socket_availability_ups', 'field_label' => 'Power Socket for UPS', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Available', 'value' => 'available'], ['label' => 'Not Available', 'value' => 'not_available']]],
+        ['section_title' => 'Power & UPS Infrastructure', 'field_key' => 'ups_available_snap', 'field_label' => 'UPS & Power Photo', 'field_type' => 'file', 'is_required' => 0, 'grid_width' => 6],
+
+        // 4. Electrical Measurements
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'earthing', 'field_label' => 'Earthing Status', 'field_type' => 'select', 'is_required' => 1, 'grid_width' => 6, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'earthing_voltage', 'field_label' => 'Earthing Voltage (Neutral - Earth / E-N)', 'field_type' => 'text', 'placeholder' => 'e.g., 0.5V', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'power_fluctuation_en', 'field_label' => 'Power Fluctuation E-N', 'field_type' => 'text', 'placeholder' => 'e.g., 220V', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'power_fluctuation_pe', 'field_label' => 'Power Fluctuation P-E', 'field_type' => 'text', 'placeholder' => 'e.g., 0V', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'power_fluctuation_pn', 'field_label' => 'Power Fluctuation P-N', 'field_type' => 'text', 'placeholder' => 'e.g., 220V', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'frequent_power_cut', 'field_label' => 'Frequent Power Cut', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'frequent_power_cut_from', 'field_label' => 'Power Cut From Time', 'field_type' => 'text', 'placeholder' => 'e.g., 14:00', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'frequent_power_cut_to', 'field_label' => 'Power Cut To Time', 'field_type' => 'text', 'placeholder' => 'e.g., 16:00', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'frequent_power_cut_remark', 'field_label' => 'Power Cut Remarks', 'field_type' => 'textarea', 'placeholder' => 'e.g. Daily power cut during peak hours...', 'is_required' => 0, 'grid_width' => 12],
+        ['section_title' => 'Electrical Measurements', 'field_key' => 'earthing_snap', 'field_label' => 'Earthing & Multimeter Photo', 'field_type' => 'file', 'is_required' => 0, 'grid_width' => 6],
+
+        // 5. Site Access
+        ['section_title' => 'Site Access', 'field_key' => 'em_lock_available', 'field_label' => 'EM Lock Available', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Site Access', 'field_key' => 'em_lock_password', 'field_label' => 'EM Lock Password', 'field_type' => 'text', 'placeholder' => 'Password / PIN', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Site Access', 'field_key' => 'password_received', 'field_label' => 'Password Received', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Site Access', 'field_key' => 'backroom_key_name', 'field_label' => 'Backroom Key Contact Name', 'field_type' => 'text', 'placeholder' => 'Keyholder contact person', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Site Access', 'field_key' => 'backroom_key_number', 'field_label' => 'Backroom Key Contact Number', 'field_type' => 'phone', 'placeholder' => 'e.g. 9876543210', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Site Access', 'field_key' => 'backroom_key_status', 'field_label' => 'Backroom Key Status', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 4, 'options' => [['label' => 'Available', 'value' => 'available'], ['label' => 'Not Available', 'value' => 'not_available']]],
+
+        // 6. Environmental Factors
+        ['section_title' => 'Environmental Factors', 'field_key' => 'router_antenna_position', 'field_label' => 'Router / Antenna Position', 'field_type' => 'text', 'placeholder' => 'Proposed antenna mounting position', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'router_position', 'field_label' => 'Router Position', 'field_type' => 'text', 'placeholder' => 'Proposed router placement in backroom', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'antenna_routing_detail', 'field_label' => 'Antenna Routing Detail', 'field_type' => 'textarea', 'placeholder' => 'Cable pathway from antenna to router...', 'is_required' => 0, 'grid_width' => 12],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'nearest_shop_name', 'field_label' => 'Nearest Shop Name', 'field_type' => 'text', 'placeholder' => 'Nearby shop or landmark', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'nearest_shop_number', 'field_label' => 'Nearest Shop Number', 'field_type' => 'phone', 'placeholder' => 'Shopkeeper phone', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'nearest_shop_distance', 'field_label' => 'Nearest Shop Distance', 'field_type' => 'text', 'placeholder' => 'e.g., 100m', 'is_required' => 0, 'grid_width' => 4],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'backroom_disturbing_material', 'field_label' => 'Backroom Disturbing / Hazardous Material', 'field_type' => 'select', 'is_required' => 0, 'grid_width' => 6, 'options' => [['label' => 'Yes', 'value' => 'yes'], ['label' => 'No', 'value' => 'no']]],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'backroom_disturbing_material_remark', 'field_label' => 'Disturbing Material Remarks', 'field_type' => 'text', 'placeholder' => 'e.g. Water leakage, exposed cables', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'router_antenna_snap', 'field_label' => 'Proposed Router / Antenna Snapshot', 'field_type' => 'file', 'is_required' => 0, 'grid_width' => 6],
+        ['section_title' => 'Environmental Factors', 'field_key' => 'antenna_routing_snap', 'field_label' => 'Antenna Routing Pathway Snapshot', 'field_type' => 'file', 'is_required' => 0, 'grid_width' => 6],
+
+        // 7. Remarks & Final Assessment
+        ['section_title' => 'Remarks & Final Assessment', 'field_key' => 'remarks', 'field_label' => 'General Inspection Remarks', 'field_type' => 'textarea', 'placeholder' => 'Provide comprehensive inspection observations, special access instructions, or notes for installation...', 'is_required' => 0, 'grid_width' => 12],
+        ['section_title' => 'Remarks & Final Assessment', 'field_key' => 'remarks_snap', 'field_label' => 'Site Overall / External Snap', 'field_type' => 'file', 'is_required' => 0, 'grid_width' => 6]
+    ];
+}
+
+// Group fields by Section Title
+$groupedSections = [];
+foreach ($dynamicFields as $field) {
+    $secTitle = !empty($field['section_title']) ? trim($field['section_title']) : 'General Information';
+    if (!isset($groupedSections[$secTitle])) {
+        $groupedSections[$secTitle] = [];
+    }
+    $groupedSections[$secTitle][] = $field;
+}
+
+/**
+ * Normalize section name to standard slug for rejection matching
+ */
+function normalizeSectionSlug($sectionTitle) {
+    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $sectionTitle), '_'));
+    $map = [
+        'atm_information' => 'atm_information',
+        'network_information' => 'network_information',
+        'power_ups_infrastructure' => 'power_infrastructure',
+        'power_infrastructure' => 'power_infrastructure',
+        'electrical_measurements' => 'electrical_measurements',
+        'site_access' => 'site_access',
+        'environmental_factors' => 'environmental_factors',
+        'remarks_final_assessment' => 'remarks',
+        'remarks' => 'remarks'
+    ];
+    return $map[$slug] ?? $slug;
+}
+
 /**
  * Helper function to check if a section is rejected
- * @param string $sectionName Section name to check
- * @param array $editableSections List of editable/rejected sections
- * @param array|null $rejectionInfo Rejection info array
- * @return bool True if section is rejected
  */
 function isSectionRejected($sectionName, $editableSections, $rejectionInfo) {
     if (!$rejectionInfo) return false;
     
-    // For overall rejection, all sections are considered rejected
     if ($rejectionInfo['rejection_type'] === 'overall') {
         return true;
     }
     
-    // For section-specific rejection, check if this section is in the list
     return in_array($sectionName, $editableSections);
 }
 
 /**
  * Helper function to check if a field is editable in resubmit mode
- * @param string $fieldName Field name to check
- * @param bool $resubmitMode Whether we're in resubmit mode
- * @param array $editableFields List of editable fields
- * @return bool True if field is editable
  */
 function isFieldEditable($fieldName, $resubmitMode, $editableFields) {
     if (!$resubmitMode) return true;
@@ -161,11 +248,6 @@ function isFieldEditable($fieldName, $resubmitMode, $editableFields) {
 
 /**
  * Get CSS classes for a section based on rejection status
- * @param string $sectionName Section name
- * @param array $editableSections List of editable/rejected sections
- * @param array|null $rejectionInfo Rejection info
- * @param bool $isRejected Whether feasibility is rejected
- * @return string CSS classes
  */
 function getSectionClasses($sectionName, $editableSections, $rejectionInfo, $isRejected) {
     if (!$isRejected) return '';
@@ -174,6 +256,23 @@ function getSectionClasses($sectionName, $editableSections, $rejectionInfo, $isR
         return 'rejected-section';
     }
     return '';
+}
+
+/**
+ * Get section visual style and icons
+ */
+function getSectionStyle($sectionTitle) {
+    $slug = normalizeSectionSlug($sectionTitle);
+    $styles = [
+        'atm_information' => ['icon' => 'fa-credit-card', 'bg' => 'bg-yellow-50', 'text' => 'text-yellow-800', 'badge' => 'border-yellow-200 text-yellow-700 bg-yellow-100'],
+        'network_information' => ['icon' => 'fa-wifi', 'bg' => 'bg-green-50', 'text' => 'text-green-800', 'badge' => 'border-green-200 text-green-700 bg-green-100'],
+        'power_infrastructure' => ['icon' => 'fa-bolt', 'bg' => 'bg-orange-50', 'text' => 'text-orange-800', 'badge' => 'border-orange-200 text-orange-700 bg-orange-100'],
+        'electrical_measurements' => ['icon' => 'fa-tachometer-alt', 'bg' => 'bg-blue-50', 'text' => 'text-blue-800', 'badge' => 'border-blue-200 text-blue-700 bg-blue-100'],
+        'site_access' => ['icon' => 'fa-key', 'bg' => 'bg-purple-50', 'text' => 'text-purple-800', 'badge' => 'border-purple-200 text-purple-700 bg-purple-100'],
+        'environmental_factors' => ['icon' => 'fa-leaf', 'bg' => 'bg-teal-50', 'text' => 'text-teal-800', 'badge' => 'border-teal-200 text-teal-700 bg-teal-100'],
+        'remarks' => ['icon' => 'fa-clipboard-list', 'bg' => 'bg-slate-50', 'text' => 'text-slate-800', 'badge' => 'border-slate-200 text-slate-700 bg-slate-100']
+    ];
+    return $styles[$slug] ?? ['icon' => 'fa-layer-group', 'bg' => 'bg-indigo-50', 'text' => 'text-indigo-800', 'badge' => 'border-indigo-200 text-indigo-700 bg-indigo-100'];
 }
 
 $baseUrl = '..';
@@ -191,17 +290,16 @@ ob_start();
 // Include thumbnail and lightbox styles
 echo getImageThumbnailStyles();
 echo getLightboxStyles();
-
-// Add rejection highlight styles (Requirements 12.1, 12.2)
 ?>
+
 <style>
-/* Rejection highlight styles - Requirement 12.2 */
+/* Rejection highlight styles */
 .rejected-section {
     border: 2px solid #ef4444 !important;
     background-color: #fef2f2 !important;
 }
 
-.rejected-section .p-4.border-b {
+.rejected-section .section-header {
     background-color: #fee2e2 !important;
     border-color: #fca5a5 !important;
 }
@@ -291,9 +389,10 @@ echo getLightboxStyles();
 }
 
 .field-disabled {
-    opacity: 0.6;
+    opacity: 0.65;
     pointer-events: none;
-    background-color: #f3f4f6 !important;
+    background-color: #f8fafc !important;
+    cursor: not-allowed;
 }
 
 .resubmit-button {
@@ -313,7 +412,6 @@ echo getLightboxStyles();
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
-/* Review history styles */
 .review-history-item {
     border-left: 3px solid #e5e7eb;
     padding-left: 16px;
@@ -328,7 +426,6 @@ echo getLightboxStyles();
     border-left-color: #22c55e;
 }
 
-/* Slide-out panel styles */
 .rejection-panel-overlay {
     position: fixed;
     inset: 0;
@@ -401,10 +498,7 @@ echo getLightboxStyles();
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    cursor: pointer;
     transition: all 0.2s;
-    border: none;
-    font-size: 14px;
 }
 
 .rejection-toggle-btn:hover {
@@ -412,48 +506,46 @@ echo getLightboxStyles();
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 </style>
-<?php
-// Prepare rejection info for sidebar (must be defined before panel HTML)
-$hasRejectionSidebar = $isRejected && $rejectionInfo;
-$rejectionTypeLabel = '';
-$rejectedByLabel = '';
-$rejectedAtFormatted = '';
-if ($hasRejectionSidebar) {
-    $rejectionTypeLabel = $rejectionInfo['rejection_type'] === 'overall' ? 'Overall Rejection' : 'Section-Specific Rejection';
-    $rejectedByLabel = $rejectionInfo['rejected_by'] ?? 'Reviewer';
-    $rejectedAtFormatted = $rejectionInfo['rejected_at'] ? date('M d, Y h:i A', strtotime($rejectionInfo['rejected_at'])) : 'N/A';
-}
-?>
 
 <!-- Slide-out Rejection Panel -->
-<?php if ($hasRejectionSidebar || !empty($reviewHistory)): ?>
+<?php 
+$hasRejectionSidebar = $isRejected && $rejectionInfo;
+if ($hasRejectionSidebar || !empty($reviewHistory)): 
+    $rejectedByLabel = 'Contractor Reviewer';
+    if ($rejectionInfo && $rejectionInfo['rejected_by']) {
+        $userModel = new User();
+        $reviewer = $userModel->findById($rejectionInfo['rejected_by']);
+        if ($reviewer) {
+            $rejectedByLabel = $reviewer['first_name'] . ' ' . $reviewer['last_name'];
+        }
+    }
+    $rejectedAtFormatted = $rejectionInfo && $rejectionInfo['rejected_at'] ? date('M d, Y h:i A', strtotime($rejectionInfo['rejected_at'])) : 'Recently';
+?>
 <div id="rejection-panel-overlay" class="rejection-panel-overlay" onclick="closeRejectionPanel()"></div>
 <div id="rejection-panel" class="rejection-panel">
     <div class="rejection-panel-header">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white">
+            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <div>
-                <div class="font-semibold text-red-800">Rejection Details</div>
-                <div class="text-xs text-red-600"><?php echo htmlspecialchars($rejectionTypeLabel); ?></div>
+                <h3 class="font-semibold text-red-900">Rejection Details</h3>
+                <p class="text-xs text-red-600">Action required</p>
             </div>
         </div>
-        <button class="rejection-panel-close" onclick="closeRejectionPanel()">
-            <i class="fas fa-times text-red-500"></i>
+        <button type="button" class="rejection-panel-close" onclick="closeRejectionPanel()">
+            <i class="fas fa-times text-gray-500"></i>
         </button>
     </div>
     
-    <div class="p-5 space-y-5">
-        <?php if ($hasRejectionSidebar): ?>
-        <!-- Rejection Reason -->
+    <div class="p-6 space-y-6">
+        <?php if ($rejectionInfo): ?>
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
             <div class="text-xs font-semibold text-red-800 uppercase mb-2">Rejection Reason</div>
             <div class="text-sm text-gray-700"><?php echo htmlspecialchars($rejectionInfo['rejection_reason'] ?? 'No reason provided'); ?></div>
         </div>
         
         <?php if ($rejectionInfo['rejection_type'] === 'section_specific' && !empty($editableSections)): ?>
-        <!-- Rejected Sections -->
         <div>
             <div class="text-xs font-semibold text-gray-600 uppercase mb-2">Rejected Sections</div>
             <div class="flex flex-wrap gap-2">
@@ -466,7 +558,6 @@ if ($hasRejectionSidebar) {
         </div>
         <?php endif; ?>
         
-        <!-- Rejection Meta -->
         <div class="border-t pt-4 space-y-2 text-sm text-gray-600">
             <div><i class="fas fa-user mr-2 text-gray-400"></i>Rejected by: <?php echo htmlspecialchars($rejectedByLabel); ?></div>
             <div><i class="fas fa-clock mr-2 text-gray-400"></i><?php echo $rejectedAtFormatted; ?></div>
@@ -484,7 +575,6 @@ if ($hasRejectionSidebar) {
         <?php endif; ?>
         
         <?php if (!empty($reviewHistory)): ?>
-        <!-- Review History -->
         <div class="border-t pt-4">
             <div class="text-xs font-semibold text-gray-600 uppercase mb-3">Review History (<?php echo count($reviewHistory); ?> records)</div>
             <div class="space-y-4">
@@ -524,13 +614,20 @@ if ($hasRejectionSidebar) {
 </div>
 <?php endif; ?>
 
-<div class="max-w-6xl mx-auto">
+<div class="max-w-6xl mx-auto pb-12">
     <!-- Header -->
-    <div class="bg-white rounded-xl shadow-sm mb-6">
-        <div class="p-6 border-b flex items-center justify-between">
+    <div class="bg-white rounded-xl shadow-sm mb-6 border border-gray-100">
+        <div class="p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
             <div>
-                <h3 class="text-lg font-semibold text-gray-800"><?php echo $pageTitle; ?></h3>
-                <p class="text-sm text-gray-500">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-bold text-gray-800"><?php echo $pageTitle; ?></h3>
+                    <?php if ($customForm): ?>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <i class="fas fa-magic mr-1"></i> Dynamic: <?php echo htmlspecialchars($customForm['form_name']); ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
                     <?php 
                     if ($viewMode) {
                         echo 'View submitted feasibility check details';
@@ -544,779 +641,239 @@ if ($hasRejectionSidebar) {
             </div>
             <div class="flex items-center gap-3">
                 <?php if ($hasRejectionSidebar || !empty($reviewHistory)): ?>
-                <button onclick="openRejectionPanel()" class="rejection-toggle-btn">
+                <button type="button" onclick="openRejectionPanel()" class="rejection-toggle-btn text-xs">
                     <i class="fas fa-exclamation-circle"></i>
                     View Rejection Details
                 </button>
                 <?php endif; ?>
-                <a href="sites.php" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Sites
+                <a href="sites.php" class="px-3.5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-xs font-medium">
+                    <i class="fas fa-arrow-left mr-1.5"></i>Back to Sites
                 </a>
             </div>
         </div>
     </div>
 
-            <!-- Master Site Information (Read-only) - Requirement 4.2 -->
-            <div class="bg-white rounded-xl shadow-sm mb-6">
-                <div class="p-4 border-b bg-blue-50">
-                    <h4 class="font-semibold text-blue-800"><i class="fas fa-info-circle mr-2"></i>Site Information</h4>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Site Name</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['site_name'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">LHO</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['lho'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Bank Name</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['bank_name'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Customer Name</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['customer_name'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">City</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['city'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">State</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['state'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-xs text-gray-500 mb-1">Address</label>
-                            <p class="font-medium text-gray-800"><?php echo htmlspecialchars($siteInfo['address'] ?? 'N/A'); ?></p>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Coordinates</label>
-                            <p class="font-medium text-gray-800">
-                                <?php if ($siteInfo['latitude'] && $siteInfo['longitude']): ?>
-                                    <a href="https://www.google.com/maps?q=<?php echo $siteInfo['latitude']; ?>,<?php echo $siteInfo['longitude']; ?>" 
-                                       target="_blank" class="text-blue-600 hover:underline">
-                                        <?php echo $siteInfo['latitude']; ?>, <?php echo $siteInfo['longitude']; ?>
-                                        <i class="fas fa-external-link-alt ml-1 text-xs"></i>
-                                    </a>
-                                <?php else: ?>
-                                    N/A
-                                <?php endif; ?>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Feasibility Form -->
-            <form id="feasibility-form" enctype="multipart/form-data">
-                <input type="hidden" name="assignment_id" value="<?php echo $assignmentId; ?>">
-                <?php if ($resubmitMode && $existingFeasibility): ?>
-                <input type="hidden" name="feasibility_id" value="<?php echo $existingFeasibility['id']; ?>">
-                <input type="hidden" name="is_resubmit" value="1">
-                <?php endif; ?>
-                
-                <?php 
-                // Helper variables for section editability
-                $atmSectionRejected = isSectionRejected('atm_information', $editableSections, $rejectionInfo);
-                $atmSectionClasses = getSectionClasses('atm_information', $editableSections, $rejectionInfo, $isRejected);
-                $atmFieldsDisabled = $viewMode || ($resubmitMode && !$atmSectionRejected);
-                ?>
-                
-                <!-- ATM Information - Requirement 5.1 -->
-                <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $atmSectionClasses; ?>" data-section="atm_information">
-                    <div class="p-4 border-b bg-yellow-50">
-                        <h4 class="font-semibold text-yellow-800">
-                            <i class="fas fa-credit-card mr-2"></i>ATM Information
-                            <?php if ($isRejected && $atmSectionRejected): ?>
-                            <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                            <?php endif; ?>
-                        </h4>
-                    </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Number of ATMs <span class="text-red-500">*</span>
-                                </label>
-                                <select name="no_of_atm" id="no_of_atm" required <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>"
-                                    onchange="toggleATMFields()">
-                                    <option value="">Select</option>
-                                    <option value="0" <?php echo ($existingFeasibility['no_of_atm'] ?? '') == '0' ? 'selected' : ''; ?>>0</option>
-                                    <option value="1" <?php echo ($existingFeasibility['no_of_atm'] ?? '') == '1' ? 'selected' : ''; ?>>1</option>
-                                    <option value="2" <?php echo ($existingFeasibility['no_of_atm'] ?? '') == '2' ? 'selected' : ''; ?>>2</option>
-                                    <option value="3" <?php echo ($existingFeasibility['no_of_atm'] ?? '') == '3' ? 'selected' : ''; ?>>3</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <!-- ATM 1 -->
-                        <div id="atm-1-fields" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
-                            <h5 class="font-medium text-gray-700 mb-3">ATM 1</h5>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">ATM ID</label>
-                                    <input type="text" name="atm_id_1" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                        value="<?php echo htmlspecialchars($existingFeasibility['atm_id_1'] ?? ''); ?>"
-                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">ATM Status</label>
-                                    <select name="atm_1_status" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                        <option value="">Select</option>
-                                        <option value="working" <?php echo ($existingFeasibility['atm_1_status'] ?? '') == 'working' ? 'selected' : ''; ?>>Working</option>
-                                        <option value="not_working" <?php echo ($existingFeasibility['atm_1_status'] ?? '') == 'not_working' ? 'selected' : ''; ?>>Not Working</option>
-                                        <option value="maintenance" <?php echo ($existingFeasibility['atm_1_status'] ?? '') == 'maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ATM 2 -->
-                        <div id="atm-2-fields" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
-                            <h5 class="font-medium text-gray-700 mb-3">ATM 2</h5>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">ATM ID</label>
-                                    <input type="text" name="atm_id_2" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                value="<?php echo htmlspecialchars($existingFeasibility['atm_id_2'] ?? ''); ?>"
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ATM Status</label>
-                            <select name="atm_2_status" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                <option value="">Select</option>
-                                <option value="working" <?php echo ($existingFeasibility['atm_2_status'] ?? '') == 'working' ? 'selected' : ''; ?>>Working</option>
-                                <option value="not_working" <?php echo ($existingFeasibility['atm_2_status'] ?? '') == 'not_working' ? 'selected' : ''; ?>>Not Working</option>
-                                <option value="maintenance" <?php echo ($existingFeasibility['atm_2_status'] ?? '') == 'maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- ATM 3 -->
-                <div id="atm-3-fields" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
-                    <h5 class="font-medium text-gray-700 mb-3">ATM 3</h5>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ATM ID</label>
-                            <input type="text" name="atm_id_3" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                value="<?php echo htmlspecialchars($existingFeasibility['atm_id_3'] ?? ''); ?>"
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">ATM Status</label>
-                            <select name="atm_3_status" <?php echo $atmFieldsDisabled ? 'disabled' : ''; ?>
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $atmFieldsDisabled ? 'field-disabled' : ''; ?>"></select>
-                                <option value="">Select</option>
-                                <option value="working" <?php echo ($existingFeasibility['atm_3_status'] ?? '') == 'working' ? 'selected' : ''; ?>>Working</option>
-                                <option value="not_working" <?php echo ($existingFeasibility['atm_3_status'] ?? '') == 'not_working' ? 'selected' : ''; ?>>Not Working</option>
-                                <option value="maintenance" <?php echo ($existingFeasibility['atm_3_status'] ?? '') == 'maintenance' ? 'selected' : ''; ?>>Under Maintenance</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Master Site Information (Read-only) -->
+    <div class="bg-white rounded-xl shadow-sm mb-6 border border-gray-100 overflow-hidden">
+        <div class="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-between">
+            <h4 class="font-bold text-blue-900 text-sm flex items-center">
+                <i class="fas fa-map-marker-alt text-blue-600 mr-2"></i>Master Site Information
+            </h4>
+            <?php if (!empty($siteInfo['project_name'])): ?>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white border border-blue-200 text-blue-800">
+                Project: <?php echo htmlspecialchars($siteInfo['project_name']); ?>
+            </span>
+            <?php endif; ?>
         </div>
-
-        <?php 
-        // Network Information section variables
-        $networkSectionRejected = isSectionRejected('network_information', $editableSections, $rejectionInfo);
-        $networkSectionClasses = getSectionClasses('network_information', $editableSections, $rejectionInfo, $isRejected);
-        $networkFieldsDisabled = $viewMode || ($resubmitMode && !$networkSectionRejected);
-        ?>
-
-        <!-- Network Information - Requirement 5.2 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $networkSectionClasses; ?>" data-section="network_information">
-            <div class="p-4 border-b bg-green-50">
-                <h4 class="font-semibold text-green-800">
-                    <i class="fas fa-wifi mr-2"></i>Network Information
-                    <?php if ($isRejected && $networkSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Primary Operator <span class="text-red-500">*</span>
-                        </label>
-                        <select name="operator" required <?php echo $networkFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $networkFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="Airtel" <?php echo ($existingFeasibility['operator'] ?? '') == 'Airtel' ? 'selected' : ''; ?>>Airtel</option>
-                            <option value="Jio" <?php echo ($existingFeasibility['operator'] ?? '') == 'Jio' ? 'selected' : ''; ?>>Jio</option>
-                            <option value="Vi" <?php echo ($existingFeasibility['operator'] ?? '') == 'Vi' ? 'selected' : ''; ?>>Vi</option>
-                            <option value="BSNL" <?php echo ($existingFeasibility['operator'] ?? '') == 'BSNL' ? 'selected' : ''; ?>>BSNL</option>
-                            <option value="Other" <?php echo ($existingFeasibility['operator'] ?? '') == 'Other' ? 'selected' : ''; ?>>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Signal Status <span class="text-red-500">*</span>
-                        </label>
-                        <select name="signal_status" required <?php echo $networkFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $networkFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="excellent" <?php echo ($existingFeasibility['signal_status'] ?? '') == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                            <option value="good" <?php echo ($existingFeasibility['signal_status'] ?? '') == 'good' ? 'selected' : ''; ?>>Good</option>
-                            <option value="poor" <?php echo ($existingFeasibility['signal_status'] ?? '') == 'poor' ? 'selected' : ''; ?>>Poor</option>
-                            <option value="no_signal" <?php echo ($existingFeasibility['signal_status'] ?? '') == 'no_signal' ? 'selected' : ''; ?>>No Signal</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Operator</label>
-                        <select name="operator_2" <?php echo $networkFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $networkFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="Airtel" <?php echo ($existingFeasibility['operator_2'] ?? '') == 'Airtel' ? 'selected' : ''; ?>>Airtel</option>
-                            <option value="Jio" <?php echo ($existingFeasibility['operator_2'] ?? '') == 'Jio' ? 'selected' : ''; ?>>Jio</option>
-                            <option value="Vi" <?php echo ($existingFeasibility['operator_2'] ?? '') == 'Vi' ? 'selected' : ''; ?>>Vi</option>
-                            <option value="BSNL" <?php echo ($existingFeasibility['operator_2'] ?? '') == 'BSNL' ? 'selected' : ''; ?>>BSNL</option>
-                            <option value="Other" <?php echo ($existingFeasibility['operator_2'] ?? '') == 'Other' ? 'selected' : ''; ?>>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Signal Status</label>
-                        <select name="signal_status_2" <?php echo $networkFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $networkFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="excellent" <?php echo ($existingFeasibility['signal_status_2'] ?? '') == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                            <option value="good" <?php echo ($existingFeasibility['signal_status_2'] ?? '') == 'good' ? 'selected' : ''; ?>>Good</option>
-                            <option value="poor" <?php echo ($existingFeasibility['signal_status_2'] ?? '') == 'poor' ? 'selected' : ''; ?>>Poor</option>
-                            <option value="no_signal" <?php echo ($existingFeasibility['signal_status_2'] ?? '') == 'no_signal' ? 'selected' : ''; ?>>No Signal</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Backroom Network Remarks</label>
-                    <textarea name="backroom_network_remark" rows="2" <?php echo $networkFieldsDisabled ? 'disabled' : ''; ?>
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $networkFieldsDisabled ? 'field-disabled' : ''; ?>"><?php echo htmlspecialchars($existingFeasibility['backroom_network_remark'] ?? ''); ?></textarea>
-                </div>
-                <?php if (!$viewMode && !$networkFieldsDisabled): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Network Snapshot</label>
-                    <input type="file" name="backroom_network_snap" accept="image/jpeg,image/png"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                    <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                </div>
-                <?php elseif ($existingFeasibility['backroom_network_snap'] ?? ''): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Network Snapshot</label>
-                    <?php echo renderImageThumbnail($existingFeasibility['backroom_network_snap'], 'Network Snapshot'); ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <?php 
-        // Power Infrastructure section variables
-        $powerSectionRejected = isSectionRejected('power_infrastructure', $editableSections, $rejectionInfo);
-        $powerSectionClasses = getSectionClasses('power_infrastructure', $editableSections, $rejectionInfo, $isRejected);
-        $powerFieldsDisabled = $viewMode || ($resubmitMode && !$powerSectionRejected);
-        ?>
-
-        <!-- Power Infrastructure - Requirement 5.3 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $powerSectionClasses; ?>" data-section="power_infrastructure">
-            <div class="p-4 border-b bg-orange-50">
-                <h4 class="font-semibold text-orange-800"><i class="fas fa-bolt mr-2"></i>Power Infrastructure</h4>
-                    <i class="fas fa-bolt mr-2"></i>Power Infrastructure
-                    <?php if ($isRejected && $powerSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            UPS Available <span class="text-red-500">*</span>
-                        </label>
-                        <select name="ups_available" id="ups_available" required <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            onchange="toggleUPSFields()">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['ups_available'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['ups_available'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                    <div id="ups-count-field" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Number of UPS</label>
-                        <select name="no_of_ups" id="no_of_ups" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            onchange="toggleUPSWorkingFields()">
-                            <option value="">Select</option>
-                            <option value="1" <?php echo ($existingFeasibility['no_of_ups'] ?? '') == '1' ? 'selected' : ''; ?>>1</option>
-                            <option value="2" <?php echo ($existingFeasibility['no_of_ups'] ?? '') == '2' ? 'selected' : ''; ?>>2</option>
-                            <option value="3" <?php echo ($existingFeasibility['no_of_ups'] ?? '') == '3' ? 'selected' : ''; ?>>3</option>
-                        </select>
-                    </div>
-                    <div id="ups-backup-field" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">UPS Battery Backup</label>
-                        <select name="ups_battery_backup" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="less_than_30min" <?php echo ($existingFeasibility['ups_battery_backup'] ?? '') == 'less_than_30min' ? 'selected' : ''; ?>>Less than 30 min</option>
-                            <option value="30min_to_1hr" <?php echo ($existingFeasibility['ups_battery_backup'] ?? '') == '30min_to_1hr' ? 'selected' : ''; ?>>30 min - 1 hour</option>
-                            <option value="1hr_to_2hr" <?php echo ($existingFeasibility['ups_battery_backup'] ?? '') == '1hr_to_2hr' ? 'selected' : ''; ?>>1 - 2 hours</option>
-                            <option value="more_than_2hr" <?php echo ($existingFeasibility['ups_battery_backup'] ?? '') == 'more_than_2hr' ? 'selected' : ''; ?>>More than 2 hours</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- UPS Working Status -->
-                <div id="ups-working-fields" class="mt-4 hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div id="ups-working-1-field" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">UPS 1 Working</label>
-                            <select name="ups_working_1" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                <option value="">Select</option>
-                                <option value="yes" <?php echo ($existingFeasibility['ups_working_1'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                                <option value="no" <?php echo ($existingFeasibility['ups_working_1'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                            </select>
-                        </div>
-                        <div id="ups-working-2-field" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">UPS 2 Working</label>
-                            <select name="ups_working_2" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                <option value="">Select</option>
-                                <option value="yes" <?php echo ($existingFeasibility['ups_working_2'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                                <option value="no" <?php echo ($existingFeasibility['ups_working_2'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                            </select>
-                        </div>
-                        <div id="ups-working-3-field" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">UPS 3 Working</label>
-                            <select name="ups_working_3" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                                <option value="">Select</option>
-                                <option value="yes" <?php echo ($existingFeasibility['ups_working_3'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                                <option value="no" <?php echo ($existingFeasibility['ups_working_3'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Socket Availability</label>
-                        <select name="power_socket_availability" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="available" <?php echo ($existingFeasibility['power_socket_availability'] ?? '') == 'available' ? 'selected' : ''; ?>>Available</option>
-                            <option value="not_available" <?php echo ($existingFeasibility['power_socket_availability'] ?? '') == 'not_available' ? 'selected' : ''; ?>>Not Available</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Socket for UPS</label>
-                        <select name="power_socket_availability_ups" <?php echo $powerFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $powerFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="available" <?php echo ($existingFeasibility['power_socket_availability_ups'] ?? '') == 'available' ? 'selected' : ''; ?>>Available</option>
-                            <option value="not_available" <?php echo ($existingFeasibility['power_socket_availability_ups'] ?? '') == 'not_available' ? 'selected' : ''; ?>>Not Available</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <?php if (!$viewMode && !$powerFieldsDisabled): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">UPS Snapshot</label>
-                    <input type="file" name="ups_available_snap" accept="image/jpeg,image/png"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                    <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                </div>
-                <?php elseif ($existingFeasibility['ups_available_snap'] ?? ''): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">UPS Snapshot</label>
-                    <?php echo renderImageThumbnail($existingFeasibility['ups_available_snap'], 'UPS Snapshot'); ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <?php 
-        // Electrical Measurements section variables
-        $electricalSectionRejected = isSectionRejected('electrical_measurements', $editableSections, $rejectionInfo);
-        $electricalSectionClasses = getSectionClasses('electrical_measurements', $editableSections, $rejectionInfo, $isRejected);
-        $electricalFieldsDisabled = $viewMode || ($resubmitMode && !$electricalSectionRejected);
-        ?>
-
-        <!-- Electrical Measurements - Requirement 5.4 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $electricalSectionClasses; ?>" data-section="electrical_measurements">
-            <div class="p-4 border-b bg-red-50">
-                <h4 class="font-semibold text-red-800">
-                    <i class="fas fa-plug mr-2"></i>Electrical Measurements
-                    <?php if ($isRejected && $electricalSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Earthing Status <span class="text-red-500">*</span>
-                        </label>
-                        <select name="earthing" required <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['earthing'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['earthing'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Earthing Voltage</label>
-                        <input type="text" name="earthing_voltage" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['earthing_voltage'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            placeholder="e.g., 0.5V">
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Fluctuation E-N</label>
-                        <input type="text" name="power_fluctuation_en" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['power_fluctuation_en'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            placeholder="e.g., 220V">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Fluctuation P-E</label>
-                        <input type="text" name="power_fluctuation_pe" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['power_fluctuation_pe'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            placeholder="e.g., 0V">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Fluctuation P-N</label>
-                        <input type="text" name="power_fluctuation_pn" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['power_fluctuation_pn'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            placeholder="e.g., 220V">
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Frequent Power Cut</label>
-                        <select name="frequent_power_cut" id="frequent_power_cut" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            onchange="togglePowerCutFields()">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['frequent_power_cut'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['frequent_power_cut'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                    <div id="power-cut-from-field" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Cut From</label>
-                        <input type="time" name="frequent_power_cut_from" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['frequent_power_cut_from'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div id="power-cut-to-field" class="hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Power Cut To</label>
-                        <input type="time" name="frequent_power_cut_to" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['frequent_power_cut_to'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                </div>
-                <div id="power-cut-remark-field" class="mt-4 hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Power Cut Remarks</label>
-                    <textarea name="frequent_power_cut_remark" rows="2" <?php echo $electricalFieldsDisabled ? 'disabled' : ''; ?>
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $electricalFieldsDisabled ? 'field-disabled' : ''; ?>"><?php echo htmlspecialchars($existingFeasibility['frequent_power_cut_remark'] ?? ''); ?></textarea>
-                </div>
-                
-                <?php if (!$viewMode && !$electricalFieldsDisabled): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Earthing Snapshot</label>
-                    <input type="file" name="earthing_snap" accept="image/jpeg,image/png"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                    <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                </div>
-                <?php elseif ($existingFeasibility['earthing_snap'] ?? ''): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Earthing Snapshot</label>
-                    <?php echo renderImageThumbnail($existingFeasibility['earthing_snap'], 'Earthing Snapshot'); ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <?php 
-        // Site Access section variables
-        $accessSectionRejected = isSectionRejected('site_access', $editableSections, $rejectionInfo);
-        $accessSectionClasses = getSectionClasses('site_access', $editableSections, $rejectionInfo, $isRejected);
-        $accessFieldsDisabled = $viewMode || ($resubmitMode && !$accessSectionRejected);
-        ?>
-
-        <!-- Site Access - Requirement 5.5 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $accessSectionClasses; ?>" data-section="site_access">
-            <div class="p-4 border-b bg-purple-50">
-                <h4 class="font-semibold text-purple-800">
-                    <i class="fas fa-key mr-2"></i>Site Access
-                    <?php if ($isRejected && $accessSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">EM Lock Available</label>
-                        <select name="em_lock_available" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['em_lock_available'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['em_lock_available'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">EM Lock Password</label>
-                        <input type="text" name="em_lock_password" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['em_lock_password'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Password Received</label>
-                        <select name="password_received" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['password_received'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['password_received'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Backroom Key Contact Name</label>
-                        <input type="text" name="backroom_key_name" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['backroom_key_name'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Backroom Key Contact Number</label>
-                        <input type="text" name="backroom_key_number" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['backroom_key_number'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Backroom Key Status</label>
-                        <select name="backroom_key_status" <?php echo $accessFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $accessFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="available" <?php echo ($existingFeasibility['backroom_key_status'] ?? '') == 'available' ? 'selected' : ''; ?>>Available</option>
-                            <option value="not_available" <?php echo ($existingFeasibility['backroom_key_status'] ?? '') == 'not_available' ? 'selected' : ''; ?>>Not Available</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <?php 
-        // Environmental Factors section variables
-        $envSectionRejected = isSectionRejected('environmental_factors', $editableSections, $rejectionInfo);
-        $envSectionClasses = getSectionClasses('environmental_factors', $editableSections, $rejectionInfo, $isRejected);
-        $envFieldsDisabled = $viewMode || ($resubmitMode && !$envSectionRejected);
-        ?>
-
-        <!-- Environmental Factors - Requirement 5.6 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $envSectionClasses; ?>" data-section="environmental_factors">
-            <div class="p-4 border-b bg-teal-50">
-                <h4 class="font-semibold text-teal-800">
-                    <i class="fas fa-tree mr-2"></i>Environmental Factors
-                    <?php if ($isRejected && $envSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Router/Antenna Position</label>
-                        <input type="text" name="router_antenna_position" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['router_antenna_position'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Router Position</label>
-                        <input type="text" name="router_position" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['router_position'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Antenna Routing Detail</label>
-                    <textarea name="antenna_routing_detail" rows="2" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>"><?php echo htmlspecialchars($existingFeasibility['antenna_routing_detail'] ?? ''); ?></textarea>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Nearest Shop Name</label>
-                        <input type="text" name="nearest_shop_name" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['nearest_shop_name'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Nearest Shop Number</label>
-                        <input type="text" name="nearest_shop_number" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['nearest_shop_number'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Nearest Shop Distance</label>
-                        <input type="text" name="nearest_shop_distance" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['nearest_shop_distance'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>"
-                            placeholder="e.g., 100m">
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Backroom Disturbing Material</label>
-                        <select name="backroom_disturbing_material" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                            <option value="">Select</option>
-                            <option value="yes" <?php echo ($existingFeasibility['backroom_disturbing_material'] ?? '') == 'yes' ? 'selected' : ''; ?>>Yes</option>
-                            <option value="no" <?php echo ($existingFeasibility['backroom_disturbing_material'] ?? '') == 'no' ? 'selected' : ''; ?>>No</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Disturbing Material Remarks</label>
-                        <input type="text" name="backroom_disturbing_material_remark" <?php echo $envFieldsDisabled ? 'disabled' : ''; ?>
-                            value="<?php echo htmlspecialchars($existingFeasibility['backroom_disturbing_material_remark'] ?? ''); ?>"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $envFieldsDisabled ? 'field-disabled' : ''; ?>">
-                    </div>
-                </div>
-                
-                <?php if (!$viewMode && !$envFieldsDisabled): ?>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Router/Antenna Snapshot</label>
-                        <input type="file" name="router_antenna_snap" accept="image/jpeg,image/png"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                        <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Antenna Routing Snapshot</label>
-                        <input type="file" name="antenna_routing_snap" accept="image/jpeg,image/png"
-                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                        <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                    </div>
-                </div>
-                <?php else: ?>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <?php if ($existingFeasibility['router_antenna_snap'] ?? ''): ?>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Router/Antenna Snapshot</label>
-                        <?php echo renderImageThumbnail($existingFeasibility['router_antenna_snap'], 'Router/Antenna Snapshot'); ?>
-                    </div>
-                    <?php endif; ?>
-                    <?php if ($existingFeasibility['antenna_routing_snap'] ?? ''): ?>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Antenna Routing Snapshot</label>
-                        <?php echo renderImageThumbnail($existingFeasibility['antenna_routing_snap'], 'Antenna Routing Snapshot'); ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <?php 
-        // Remarks section variables
-        $remarksSectionRejected = isSectionRejected('remarks', $editableSections, $rejectionInfo);
-        $remarksSectionClasses = getSectionClasses('remarks', $editableSections, $rejectionInfo, $isRejected);
-        $remarksFieldsDisabled = $viewMode || ($resubmitMode && !$remarksSectionRejected);
-        ?>
-
-        <!-- Remarks - Requirements 7.1, 7.2, 7.3 -->
-        <div class="bg-white rounded-xl shadow-sm mb-6 <?php echo $remarksSectionClasses; ?>" data-section="remarks">
-            <div class="p-4 border-b bg-gray-100">
-                <h4 class="font-semibold text-gray-800">
-                    <i class="fas fa-comment-alt mr-2"></i>Remarks
-                    <?php if ($isRejected && $remarksSectionRejected): ?>
-                    <span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded">Needs Correction</span>
-                    <?php endif; ?>
-                </h4>
-            </div>
-            <div class="p-6">
+        <div class="p-5 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">General Remarks</label>
-                    <textarea name="remarks" id="remarks" rows="4" maxlength="2000" <?php echo $remarksFieldsDisabled ? 'disabled' : ''; ?>
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary <?php echo $remarksFieldsDisabled ? 'field-disabled' : ''; ?>"
-                        oninput="updateCharCount()"><?php echo htmlspecialchars($existingFeasibility['remarks'] ?? ''); ?></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
-                        <span id="char-count">0</span>/2000 characters
+                    <label class="block text-gray-400 font-medium mb-0.5">Site Name</label>
+                    <p class="font-bold text-gray-800 text-sm"><?php echo htmlspecialchars($siteInfo['site_name'] ?? 'N/A'); ?></p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-medium mb-0.5">LHO / Bank Name</label>
+                    <p class="font-semibold text-gray-800"><?php echo htmlspecialchars($siteInfo['lho'] ?? 'N/A'); ?> • <?php echo htmlspecialchars($siteInfo['bank_name'] ?? 'N/A'); ?></p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-medium mb-0.5">Customer Name</label>
+                    <p class="font-semibold text-gray-800"><?php echo htmlspecialchars($siteInfo['customer_name'] ?? 'N/A'); ?></p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-medium mb-0.5">Location / City</label>
+                    <p class="font-semibold text-gray-800"><?php echo htmlspecialchars($siteInfo['city'] ?? ''); ?>, <?php echo htmlspecialchars($siteInfo['state'] ?? 'N/A'); ?></p>
+                </div>
+                <div class="sm:col-span-2 md:col-span-3">
+                    <label class="block text-gray-400 font-medium mb-0.5">Address</label>
+                    <p class="text-gray-700"><?php echo htmlspecialchars($siteInfo['address'] ?? 'N/A'); ?></p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 font-medium mb-0.5">Coordinates</label>
+                    <p class="font-medium text-gray-800">
+                        <?php if ($siteInfo['latitude'] && $siteInfo['longitude']): ?>
+                            <a href="https://www.google.com/maps?q=<?php echo $siteInfo['latitude']; ?>,<?php echo $siteInfo['longitude']; ?>" 
+                               target="_blank" class="text-indigo-600 hover:underline inline-flex items-center gap-1">
+                                <i class="fas fa-location-arrow text-[10px]"></i> <?php echo $siteInfo['latitude']; ?>, <?php echo $siteInfo['longitude']; ?>
+                            </a>
+                        <?php else: ?>
+                            N/A
+                        <?php endif; ?>
                     </p>
                 </div>
-                
-                <?php if (!$viewMode && !$remarksFieldsDisabled): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Remarks Snapshot</label>
-                    <input type="file" name="remarks_snap" accept="image/jpeg,image/png"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
-                    <p class="text-xs text-gray-500 mt-1">JPEG or PNG, max 5MB</p>
-                </div>
-                <?php elseif ($existingFeasibility['remarks_snap'] ?? ''): ?>
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Remarks Snapshot</label>
-                    <?php echo renderImageThumbnail($existingFeasibility['remarks_snap'], 'Remarks Snapshot'); ?>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
+    </div>
 
-        <!-- Submit Button -->
-        <?php if (!$viewMode || $resubmitMode): ?>
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex justify-end space-x-4">
-                <a href="sites.php" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
-                    Cancel
-                </a>
-                <?php if ($resubmitMode): ?>
-                <button type="submit" id="submit-btn" class="resubmit-button">
-                    <i class="fas fa-paper-plane mr-2"></i>Resubmit for Review
-                </button>
-                <?php else: ?>
-                <button type="submit" id="submit-btn" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition">
-                    <i class="fas fa-check mr-2"></i>Submit Feasibility Check
-                </button>
+    <!-- Feasibility Form -->
+    <form id="feasibility-form" enctype="multipart/form-data">
+        <input type="hidden" name="assignment_id" value="<?php echo $assignmentId; ?>">
+        <?php if ($resubmitMode && $existingFeasibility): ?>
+        <input type="hidden" name="feasibility_id" value="<?php echo $existingFeasibility['id']; ?>">
+        <input type="hidden" name="is_resubmit" value="1">
+        <?php endif; ?>
+
+        <!-- Render Dynamic Sections -->
+        <?php foreach ($groupedSections as $secTitle => $fields): 
+            $secSlug = normalizeSectionSlug($secTitle);
+            $secRejected = isSectionRejected($secSlug, $editableSections, $rejectionInfo);
+            $secClasses = getSectionClasses($secSlug, $editableSections, $rejectionInfo, $isRejected);
+            $secStyle = getSectionStyle($secTitle);
+            $secFieldsDisabled = $viewMode || ($resubmitMode && !$secRejected);
+        ?>
+        <div class="bg-white rounded-xl shadow-sm mb-6 border border-gray-100 overflow-hidden <?php echo $secClasses; ?>" data-section="<?php echo $secSlug; ?>" id="section-<?php echo $secSlug; ?>">
+            <div class="p-4 border-b <?php echo $secStyle['bg']; ?> section-header flex items-center justify-between">
+                <h4 class="font-bold text-sm <?php echo $secStyle['text']; ?> flex items-center gap-2">
+                    <i class="fas <?php echo $secStyle['icon']; ?>"></i>
+                    <?php echo htmlspecialchars($secTitle); ?>
+                </h4>
+                <?php if ($isRejected && $secRejected): ?>
+                <span class="text-xs bg-red-600 text-white px-2.5 py-0.5 rounded-full font-bold animate-pulse">
+                    <i class="fas fa-exclamation-circle mr-1"></i>Needs Correction
+                </span>
                 <?php endif; ?>
             </div>
+            
+            <div class="p-6">
+                <div class="grid grid-cols-12 gap-5">
+                    <?php foreach ($fields as $field): 
+                        $fieldKey = $field['field_key'];
+                        $fieldLabel = $field['field_label'] ?? ucwords(str_replace('_', ' ', $fieldKey));
+                        $fieldType = $field['field_type'] ?? 'text';
+                        $isRequired = !empty($field['is_required']);
+                        $placeholder = $field['placeholder'] ?? '';
+                        $helpText = $field['help_text'] ?? '';
+                        $gridWidth = (int)($field['grid_width'] ?? 12);
+                        
+                        // Determine responsive col-span
+                        $colSpanClass = 'col-span-12';
+                        if ($gridWidth <= 3) $colSpanClass = 'col-span-12 sm:col-span-6 md:col-span-3';
+                        elseif ($gridWidth <= 4) $colSpanClass = 'col-span-12 sm:col-span-6 md:col-span-4';
+                        elseif ($gridWidth <= 6) $colSpanClass = 'col-span-12 md:col-span-6';
+                        elseif ($gridWidth <= 8) $colSpanClass = 'col-span-12 md:col-span-8';
+                        
+                        $val = $existingFeasibility[$fieldKey] ?? ($field['default_value'] ?? '');
+                        $isFieldEdit = isFieldEditable($fieldKey, $resubmitMode, $editableFields);
+                        $isFieldDisabled = $viewMode || ($resubmitMode && !$secRejected && !$isFieldEdit);
+                        
+                        $options = $field['resolved_options'] ?? $field['options'] ?? [];
+                        if (is_string($options)) {
+                            $options = json_decode($options, true) ?: [];
+                        }
+                    ?>
+                    <div class="<?php echo $colSpanClass; ?>" id="field-wrapper-<?php echo $fieldKey; ?>">
+                        <label for="<?php echo $fieldKey; ?>" class="block text-xs font-semibold text-gray-700 mb-1.5">
+                            <?php echo htmlspecialchars($fieldLabel); ?>
+                            <?php if ($isRequired && !$isFieldDisabled && $fieldType !== 'file'): ?>
+                                <span class="text-red-500">*</span>
+                            <?php endif; ?>
+                        </label>
+
+                        <?php if ($fieldType === 'select'): ?>
+                            <select name="<?php echo $fieldKey; ?>" id="<?php echo $fieldKey; ?>"
+                                <?php echo $isRequired ? 'required' : ''; ?>
+                                <?php echo $isFieldDisabled ? 'disabled' : ''; ?>
+                                class="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition <?php echo $isFieldDisabled ? 'field-disabled' : 'bg-white hover:border-gray-400'; ?>"
+                                onchange="onDynamicFieldChange('<?php echo $fieldKey; ?>', this.value)">
+                                <option value="">-- Select --</option>
+                                <?php foreach ($options as $opt): 
+                                    $optVal = is_array($opt) ? ($opt['value'] ?? '') : $opt;
+                                    $optLbl = is_array($opt) ? ($opt['label'] ?? $opt['name'] ?? $optVal) : $opt;
+                                    $selected = ((string)$val === (string)$optVal) ? 'selected' : '';
+                                ?>
+                                    <option value="<?php echo htmlspecialchars($optVal); ?>" <?php echo $selected; ?>>
+                                        <?php echo htmlspecialchars($optLbl); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                        <?php elseif ($fieldType === 'textarea'): ?>
+                            <textarea name="<?php echo $fieldKey; ?>" id="<?php echo $fieldKey; ?>" rows="3"
+                                placeholder="<?php echo htmlspecialchars($placeholder); ?>"
+                                <?php echo $isRequired ? 'required' : ''; ?>
+                                <?php echo $isFieldDisabled ? 'disabled' : ''; ?>
+                                class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition <?php echo $isFieldDisabled ? 'field-disabled' : 'bg-white hover:border-gray-400'; ?>"
+                                oninput="<?php echo $fieldKey === 'remarks' ? 'updateCharCount()' : ''; ?>"><?php echo htmlspecialchars($val); ?></textarea>
+                            <?php if ($fieldKey === 'remarks'): ?>
+                            <div class="flex justify-between text-[11px] text-gray-400 mt-1">
+                                <span>Max 2000 characters</span>
+                                <span><span id="char-count">0</span> / 2000</span>
+                            </div>
+                            <?php endif; ?>
+
+                        <?php elseif ($fieldType === 'radio'): ?>
+                            <div class="flex flex-wrap gap-4 pt-1.5">
+                                <?php foreach ($options as $opt): 
+                                    $optVal = is_array($opt) ? ($opt['value'] ?? '') : $opt;
+                                    $optLbl = is_array($opt) ? ($opt['label'] ?? $opt['name'] ?? $optVal) : $opt;
+                                    $checked = ((string)$val === (string)$optVal) ? 'checked' : '';
+                                ?>
+                                <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-gray-700">
+                                    <input type="radio" name="<?php echo $fieldKey; ?>" value="<?php echo htmlspecialchars($optVal); ?>" 
+                                        <?php echo $checked; ?> <?php echo $isFieldDisabled ? 'disabled' : ''; ?> 
+                                        class="text-primary focus:ring-primary">
+                                    <span><?php echo htmlspecialchars($optLbl); ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+
+                        <?php elseif ($fieldType === 'file'): ?>
+                            <div class="space-y-2">
+                                <?php if (!empty($val)): ?>
+                                    <div class="mb-2">
+                                        <?php echo renderImageThumbnail($val, $fieldLabel); ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!$isFieldDisabled): ?>
+                                    <div class="relative">
+                                        <input type="file" name="<?php echo $fieldKey; ?>" id="<?php echo $fieldKey; ?>"
+                                            accept="image/jpeg,image/png,image/jpg"
+                                            <?php echo ($isRequired && empty($val)) ? 'required' : ''; ?>
+                                            class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-300 rounded-lg cursor-pointer bg-white">
+                                    </div>
+                                    <p class="text-[11px] text-gray-400">Supported: JPG, PNG • Max 5MB</p>
+                                <?php endif; ?>
+                            </div>
+
+                        <?php else: 
+                            // Input type text, number, phone, email, date, etc.
+                            $htmlInputType = in_array($fieldType, ['text', 'number', 'email', 'date', 'time']) ? $fieldType : ($fieldType === 'phone' ? 'tel' : 'text');
+                        ?>
+                            <input type="<?php echo $htmlInputType; ?>" name="<?php echo $fieldKey; ?>" id="<?php echo $fieldKey; ?>"
+                                value="<?php echo htmlspecialchars($val); ?>"
+                                placeholder="<?php echo htmlspecialchars($placeholder); ?>"
+                                <?php echo $isRequired ? 'required' : ''; ?>
+                                <?php echo $isFieldDisabled ? 'disabled' : ''; ?>
+                                class="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition <?php echo $isFieldDisabled ? 'field-disabled' : 'bg-white hover:border-gray-400'; ?>"
+                                oninput="onDynamicFieldInput('<?php echo $fieldKey; ?>', this.value)">
+                        <?php endif; ?>
+
+                        <?php if (!empty($helpText)): ?>
+                            <p class="text-[11px] text-gray-400 mt-1"><?php echo htmlspecialchars($helpText); ?></p>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+        <!-- Form Actions -->
+        <?php if (!$viewMode || $resubmitMode): ?>
+        <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 flex items-center justify-between">
+            <a href="sites.php" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-xs font-semibold">
+                Cancel
+            </a>
+            <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-200 font-bold text-xs shadow-sm flex items-center gap-2">
+                <i class="fas fa-paper-plane"></i>
+                <?php echo $resubmitMode ? 'Resubmit Feasibility Check' : 'Submit Feasibility Assessment'; ?>
+            </button>
         </div>
         <?php endif; ?>
     </form>
 </div>
 
 <script>
-// Slide-out panel functions
-function openRejectionPanel() {
-    document.getElementById('rejection-panel').classList.add('active');
-    document.getElementById('rejection-panel-overlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeRejectionPanel() {
-    document.getElementById('rejection-panel').classList.remove('active');
-    document.getElementById('rejection-panel-overlay').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Close panel on Escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeRejectionPanel();
-    }
-});
-
 const API_URL = '../api/engineer/feasibility.php';
 const RESUBMIT_API_URL = '../api/engineer/resubmit.php';
 const viewMode = <?php echo $viewMode ? 'true' : 'false'; ?>;
@@ -1325,71 +882,124 @@ const feasibilityId = <?php echo $existingFeasibility['id'] ?? 'null'; ?>;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    toggleATMFields();
-    toggleUPSFields();
-    toggleUPSWorkingFields();
-    togglePowerCutFields();
+    initDynamicFieldInteractions();
     updateCharCount();
     
     if (!viewMode || resubmitMode) {
-        document.getElementById('feasibility-form').addEventListener('submit', handleSubmit);
+        const formEl = document.getElementById('feasibility-form');
+        if (formEl) {
+            formEl.addEventListener('submit', handleSubmit);
+        }
     }
 });
 
-// Toggle ATM fields based on number of ATMs
-function toggleATMFields() {
-    const noOfAtm = parseInt(document.getElementById('no_of_atm').value) || 0;
-    
-    document.getElementById('atm-1-fields').classList.toggle('hidden', noOfAtm < 1);
-    document.getElementById('atm-2-fields').classList.toggle('hidden', noOfAtm < 2);
-    document.getElementById('atm-3-fields').classList.toggle('hidden', noOfAtm < 3);
+// Dynamic Field Interactions (ATM counts, UPS dependencies, Power cut toggles)
+function initDynamicFieldInteractions() {
+    const noOfAtmEl = document.getElementById('no_of_atm');
+    if (noOfAtmEl) toggleATMFields(noOfAtmEl.value);
+
+    const upsAvailEl = document.getElementById('ups_available');
+    if (upsAvailEl) toggleUPSFields(upsAvailEl.value);
+
+    const powerCutEl = document.getElementById('frequent_power_cut');
+    if (powerCutEl) togglePowerCutFields(powerCutEl.value);
 }
 
-// Toggle UPS fields based on UPS availability
-function toggleUPSFields() {
-    const upsAvailable = document.getElementById('ups_available').value;
-    const showUPS = upsAvailable === 'yes';
-    
-    document.getElementById('ups-count-field').classList.toggle('hidden', !showUPS);
-    document.getElementById('ups-backup-field').classList.toggle('hidden', !showUPS);
-    document.getElementById('ups-working-fields').classList.toggle('hidden', !showUPS);
-    
-    if (showUPS) {
-        toggleUPSWorkingFields();
+function onDynamicFieldChange(fieldKey, value) {
+    if (fieldKey === 'no_of_atm') {
+        toggleATMFields(value);
+    } else if (fieldKey === 'ups_available') {
+        toggleUPSFields(value);
+    } else if (fieldKey === 'no_of_ups') {
+        toggleUPSWorkingFields(value);
+    } else if (fieldKey === 'frequent_power_cut') {
+        togglePowerCutFields(value);
     }
 }
 
-// Toggle UPS working fields based on number of UPS
-function toggleUPSWorkingFields() {
-    const noOfUps = parseInt(document.getElementById('no_of_ups').value) || 0;
-    
-    document.getElementById('ups-working-1-field').classList.toggle('hidden', noOfUps < 1);
-    document.getElementById('ups-working-2-field').classList.toggle('hidden', noOfUps < 2);
-    document.getElementById('ups-working-3-field').classList.toggle('hidden', noOfUps < 3);
+function onDynamicFieldInput(fieldKey, value) {
+    if (fieldKey === 'remarks') {
+        updateCharCount();
+    }
 }
 
-// Toggle power cut fields
-function togglePowerCutFields() {
-    const frequentPowerCut = document.getElementById('frequent_power_cut').value;
-    const showFields = frequentPowerCut === 'yes';
-    
-    document.getElementById('power-cut-from-field').classList.toggle('hidden', !showFields);
-    document.getElementById('power-cut-to-field').classList.toggle('hidden', !showFields);
-    document.getElementById('power-cut-remark-field').classList.toggle('hidden', !showFields);
+function toggleATMFields(val) {
+    const count = parseInt(val) || 0;
+    ['atm_id_1', 'atm_1_status'].forEach(k => setFieldVisibility(k, count >= 1));
+    ['atm_id_2', 'atm_2_status'].forEach(k => setFieldVisibility(k, count >= 2));
+    ['atm_id_3', 'atm_3_status'].forEach(k => setFieldVisibility(k, count >= 3));
 }
 
-// Update character count for remarks - Requirement 7.2
+function toggleUPSFields(val) {
+    const isYes = val === 'yes';
+    ['no_of_ups', 'ups_battery_backup', 'ups_available_snap'].forEach(k => setFieldVisibility(k, isYes));
+    if (isYes) {
+        const count = parseInt(document.getElementById('no_of_ups')?.value || '1') || 1;
+        toggleUPSWorkingFields(count);
+    } else {
+        ['ups_working_1', 'ups_working_2', 'ups_working_3'].forEach(k => setFieldVisibility(k, false));
+    }
+}
+
+function toggleUPSWorkingFields(countVal) {
+    const count = parseInt(countVal) || 0;
+    setFieldVisibility('ups_working_1', count >= 1);
+    setFieldVisibility('ups_working_2', count >= 2);
+    setFieldVisibility('ups_working_3', count >= 3);
+}
+
+function togglePowerCutFields(val) {
+    const isYes = val === 'yes';
+    ['frequent_power_cut_from', 'frequent_power_cut_to', 'frequent_power_cut_remark'].forEach(k => setFieldVisibility(k, isYes));
+}
+
+function setFieldVisibility(fieldKey, visible) {
+    const wrapper = document.getElementById('field-wrapper-' + fieldKey);
+    if (wrapper) {
+        if (visible) {
+            wrapper.classList.remove('hidden');
+        } else {
+            wrapper.classList.add('hidden');
+        }
+    }
+}
+
+// Update character count for remarks
 function updateCharCount() {
     const remarks = document.getElementById('remarks');
     const charCount = document.getElementById('char-count');
-    charCount.textContent = remarks.value.length;
-    
-    if (remarks.value.length > 2000) {
-        charCount.classList.add('text-red-500');
-    } else {
-        charCount.classList.remove('text-red-500');
+    if (remarks && charCount) {
+        charCount.textContent = remarks.value.length;
+        if (remarks.value.length > 2000) {
+            charCount.classList.add('text-red-500');
+        } else {
+            charCount.classList.remove('text-red-500');
+        }
     }
 }
+
+// Slide-out panel functions
+function openRejectionPanel() {
+    const panel = document.getElementById('rejection-panel');
+    const overlay = document.getElementById('rejection-panel-overlay');
+    if (panel) panel.classList.add('active');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeRejectionPanel() {
+    const panel = document.getElementById('rejection-panel');
+    const overlay = document.getElementById('rejection-panel-overlay');
+    if (panel) panel.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRejectionPanel();
+    }
+});
 
 // Handle form submission
 async function handleSubmit(e) {
@@ -1398,9 +1008,9 @@ async function handleSubmit(e) {
     const form = document.getElementById('feasibility-form');
     const formData = new FormData(form);
     
-    // Validate remarks length - Requirement 7.2
-    const remarks = document.getElementById('remarks').value;
-    if (remarks.length > 2000) {
+    // Validate remarks length
+    const remarks = document.getElementById('remarks');
+    if (remarks && remarks.value.length > 2000) {
         showError('Remarks must not exceed 2000 characters');
         return;
     }
@@ -1412,10 +1022,8 @@ async function handleSubmit(e) {
     
     try {
         if (resubmitMode) {
-            // Handle resubmission
             await handleResubmit(formData);
         } else {
-            // Handle new submission
             await handleNewSubmit(formData);
         }
     } catch (error) {
@@ -1429,21 +1037,18 @@ async function handleSubmit(e) {
 
 // Handle new feasibility submission
 async function handleNewSubmit(formData) {
-    // Convert FormData to JSON for the main submission
     const jsonData = {};
     formData.forEach((value, key) => {
-        // Skip file inputs for JSON submission
-        if (!key.endsWith('_snap')) {
+        // Skip file inputs for JSON payload
+        const inputEl = document.querySelector(`input[name="${key}"][type="file"]`);
+        if (!inputEl) {
             jsonData[key] = value;
         }
     });
     
-    // Submit main form data
     const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(jsonData)
     });
@@ -1451,38 +1056,33 @@ async function handleNewSubmit(formData) {
     const data = await response.json();
     
     if (data.success) {
-        // Upload images if any
-        const feasibilityId = data.data.id;
-        await uploadImages(formData, feasibilityId);
+        const newFeasibilityId = data.data?.id;
+        if (newFeasibilityId) {
+            await uploadDynamicImages(formData, newFeasibilityId);
+        }
         
         showToast('Feasibility check submitted successfully', 'success');
-        
-        // Redirect to sites list after short delay
         setTimeout(() => {
             window.location.href = 'sites.php';
         }, 1500);
     } else {
-        showError(data.error?.message || 'Failed to submit feasibility check');
+        showError(data.error?.message || data.message || 'Failed to submit feasibility check');
     }
 }
 
 // Handle resubmission of rejected feasibility
 async function handleResubmit(formData) {
-    // Convert FormData to JSON for the resubmission
     const jsonData = {};
     formData.forEach((value, key) => {
-        // Skip file inputs and hidden fields for JSON submission
-        if (!key.endsWith('_snap') && key !== 'assignment_id' && key !== 'feasibility_id' && key !== 'is_resubmit') {
+        const inputEl = document.querySelector(`input[name="${key}"][type="file"]`);
+        if (!inputEl && key !== 'assignment_id' && key !== 'feasibility_id' && key !== 'is_resubmit') {
             jsonData[key] = value;
         }
     });
     
-    // Submit resubmission data
     const response = await fetch(`${RESUBMIT_API_URL}?id=${feasibilityId}`, {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(jsonData)
     });
@@ -1490,12 +1090,8 @@ async function handleResubmit(formData) {
     const data = await response.json();
     
     if (data.success) {
-        // Upload images if any
-        await uploadImages(formData, feasibilityId);
-        
+        await uploadDynamicImages(formData, feasibilityId);
         showToast('Feasibility check resubmitted successfully', 'success');
-        
-        // Redirect to sites list after short delay
         setTimeout(() => {
             window.location.href = 'sites.php';
         }, 1500);
@@ -1504,24 +1100,19 @@ async function handleResubmit(formData) {
     }
 }
 
-// Upload images
-async function uploadImages(formData, feasibilityId) {
-    const imageFields = [
-        'backroom_network_snap',
-        'router_antenna_snap',
-        'antenna_routing_snap',
-        'ups_available_snap',
-        'earthing_snap',
-        'remarks_snap'
-    ];
+// Dynamic image uploader for all file inputs
+async function uploadDynamicImages(formData, targetFeasibilityId) {
+    const fileInputs = document.querySelectorAll('#feasibility-form input[type="file"]');
     
-    for (const field of imageFields) {
-        const file = formData.get(field);
+    for (const input of fileInputs) {
+        const fieldName = input.name;
+        const file = formData.get(fieldName);
+        
         if (file && file.size > 0) {
             const uploadData = new FormData();
             uploadData.append('action', 'upload');
-            uploadData.append('feasibility_id', feasibilityId);
-            uploadData.append('category', field);
+            uploadData.append('feasibility_id', targetFeasibilityId);
+            uploadData.append('category', fieldName);
             uploadData.append('file', file);
             
             try {
@@ -1531,34 +1122,32 @@ async function uploadImages(formData, feasibilityId) {
                     body: uploadData
                 });
             } catch (error) {
-                console.error(`Error uploading ${field}:`, error);
+                console.error(`Error uploading ${fieldName}:`, error);
             }
         }
     }
 }
 
-// Show error message
 function showError(message) {
     showToast(message, 'error');
 }
 
-// Show toast notification
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
-    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
-    toast.textContent = message;
+    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 text-xs font-semibold flex items-center gap-2`;
+    toast.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i> ${message}`;
     document.body.appendChild(toast);
     
     setTimeout(() => {
         toast.remove();
-    }, 3000);
+    }, 3500);
 }
 </script>
 
 <?php
-// Include lightbox modal and script for view mode
-if ($viewMode) {
+// Include lightbox modal and script for image viewing
+if ($viewMode || $existingFeasibility) {
     echo renderLightboxModal();
     echo getLightboxScript();
 }

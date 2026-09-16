@@ -12,16 +12,19 @@
 
 require_once __DIR__ . '/../config/autoload.php';
 require_once __DIR__ . '/../repositories/FeasibilityETARepository.php';
+require_once __DIR__ . '/../repositories/FeasibilityADARepository.php';
 require_once __DIR__ . '/../repositories/EngineerAssignmentRepository.php';
 
 class ETAService {
     private $db;
     private $etaRepository;
+    private $adaRepository;
     private $assignmentRepository;
     
     public function __construct() {
         $this->db = DatabaseConfig::getInstance();
         $this->etaRepository = new FeasibilityETARepository();
+        $this->adaRepository = new FeasibilityADARepository();
         $this->assignmentRepository = new EngineerAssignmentRepository();
     }
     
@@ -36,6 +39,15 @@ class ETAService {
      * Requirements: 2.2, 2.3, 2.4, 2.5
      */
     public function submitETA(int $assignmentId, string $etaDateTime, int $engineerId): array {
+        // Check if ADA has already been submitted
+        if ($this->adaRepository->hasADA($assignmentId)) {
+            return [
+                'success' => false,
+                'message' => 'Cannot submit or modify ETA after arrival (ADA) has already been submitted',
+                'code' => 'ADA_ALREADY_SUBMITTED'
+            ];
+        }
+
         // Validate ETA datetime (Requirement 2.3)
         $validation = $this->validateETADateTime($etaDateTime);
         if (!$validation['isValid']) {
@@ -111,6 +123,15 @@ class ETAService {
      * Requirements: 2.2, 2.3, 2.5
      */
     public function updateETA(int $assignmentId, string $etaDateTime, int $engineerId): array {
+        // Check if ADA has already been submitted
+        if ($this->adaRepository->hasADA($assignmentId)) {
+            return [
+                'success' => false,
+                'message' => 'Cannot submit or modify ETA after arrival (ADA) has already been submitted',
+                'code' => 'ADA_ALREADY_SUBMITTED'
+            ];
+        }
+
         // Validate ETA datetime (Requirement 2.3)
         $validation = $this->validateETADateTime($etaDateTime);
         if (!$validation['isValid']) {

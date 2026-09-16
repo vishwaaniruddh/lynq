@@ -1,3 +1,6 @@
+<?php
+$baseUrl = defined('BASE_URL') ? BASE_URL : ($baseUrl ?? '');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

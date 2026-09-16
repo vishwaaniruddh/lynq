@@ -21,6 +21,8 @@ if (!isset($menuService)) {
 
 
 
+$baseUrl = defined('BASE_URL') ? BASE_URL : ($baseUrl ?? '');
+
 // Get current user ID from session
 $currentUserId = $sessionService->getCurrentUserId() ?? null;
 $visibleMenus = $currentUserId ? $menuService->getVisibleMenus($currentUserId) : [];
