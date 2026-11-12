@@ -514,7 +514,7 @@ if ($hasRejectionSidebar || !empty($reviewHistory)):
     $rejectedByLabel = 'Contractor Reviewer';
     if ($rejectionInfo && $rejectionInfo['rejected_by']) {
         $userModel = new User();
-        $reviewer = $userModel->findById($rejectionInfo['rejected_by']);
+        $reviewer = $userModel->find($rejectionInfo['rejected_by']);
         if ($reviewer) {
             $rejectedByLabel = $reviewer['first_name'] . ' ' . $reviewer['last_name'];
         }
@@ -879,6 +879,7 @@ const RESUBMIT_API_URL = '../api/engineer/resubmit.php';
 const viewMode = <?php echo $viewMode ? 'true' : 'false'; ?>;
 const resubmitMode = <?php echo $resubmitMode ? 'true' : 'false'; ?>;
 const feasibilityId = <?php echo $existingFeasibility['id'] ?? 'null'; ?>;
+window.existingFeasibilityData = <?php echo json_encode($existingFeasibility ?? []); ?>;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -896,7 +897,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dynamic Field Interactions (ATM counts, UPS dependencies, Power cut toggles)
 function initDynamicFieldInteractions() {
     const noOfAtmEl = document.getElementById('no_of_atm');
-    if (noOfAtmEl) toggleATMFields(noOfAtmEl.value);
+    if (noOfAtmEl) {
+        toggleATMFields(noOfAtmEl.value);
+        // Bind input and keyup listeners so dynamic fields generate in real time as the user types
+        noOfAtmEl.addEventListener('input', function() {
+            toggleATMFields(this.value);
+        });
+        noOfAtmEl.addEventListener('keyup', function() {
+            toggleATMFields(this.value);
+        });
+    }
 
     const upsAvailEl = document.getElementById('ups_available');
     if (upsAvailEl) toggleUPSFields(upsAvailEl.value);
@@ -918,16 +928,85 @@ function onDynamicFieldChange(fieldKey, value) {
 }
 
 function onDynamicFieldInput(fieldKey, value) {
-    if (fieldKey === 'remarks') {
+    if (fieldKey === 'no_of_atm') {
+        toggleATMFields(value);
+    } else if (fieldKey === 'remarks') {
         updateCharCount();
     }
 }
 
 function toggleATMFields(val) {
     const count = parseInt(val) || 0;
-    ['atm_id_1', 'atm_1_status'].forEach(k => setFieldVisibility(k, count >= 1));
-    ['atm_id_2', 'atm_2_status'].forEach(k => setFieldVisibility(k, count >= 2));
-    ['atm_id_3', 'atm_3_status'].forEach(k => setFieldVisibility(k, count >= 3));
+    
+    // 1. If static field wrappers exist in the DOM, toggle visibility
+    const hasStaticAtm1 = !!document.getElementById('field-wrapper-atm_id_1');
+    const hasStaticAtm2 = !!document.getElementById('field-wrapper-atm_id_2');
+    const hasStaticAtm3 = !!document.getElementById('field-wrapper-atm_id_3');
+    
+    if (hasStaticAtm1 || hasStaticAtm2 || hasStaticAtm3) {
+        ['atm_id_1', 'atm_1_status'].forEach(k => setFieldVisibility(k, count >= 1));
+        ['atm_id_2', 'atm_2_status'].forEach(k => setFieldVisibility(k, count >= 2));
+        ['atm_id_3', 'atm_3_status'].forEach(k => setFieldVisibility(k, count >= 3));
+    }
+    
+    // 2. Dynamic generation of ATM ID fields if count > 0 and static fields don't exist
+    let container = document.getElementById('dynamic-atm-ids-container');
+    if (!container) {
+        const noOfAtmWrapper = document.getElementById('field-wrapper-no_of_atm');
+        const atmSection = document.getElementById('section-atm-information');
+        const targetGrid = noOfAtmWrapper ? noOfAtmWrapper.parentElement : (atmSection ? atmSection.querySelector('.grid') : null);
+        
+        if (targetGrid) {
+            container = document.createElement('div');
+            container.id = 'dynamic-atm-ids-container';
+            container.className = 'col-span-12 grid grid-cols-12 gap-5 mt-1';
+            if (noOfAtmWrapper && noOfAtmWrapper.nextElementSibling) {
+                targetGrid.insertBefore(container, noOfAtmWrapper.nextElementSibling);
+            } else {
+                targetGrid.appendChild(container);
+            }
+        }
+    }
+    
+    if (container) {
+        // Preserve values currently typed by user
+        const currentVals = {};
+        container.querySelectorAll('input').forEach(inp => {
+            if (inp.name && inp.value) currentVals[inp.name] = inp.value;
+        });
+        
+        container.innerHTML = '';
+        
+        for (let i = 1; i <= count; i++) {
+            // Only generate dynamically if static wrapper does not exist
+            const staticWrap = document.getElementById('field-wrapper-atm_id_' + i);
+            if (!staticWrap) {
+                const existingVal = currentVals['atm_id_' + i] 
+                    || (window.existingFeasibilityData ? (window.existingFeasibilityData['atm_id_' + i] || '') : '');
+                
+                const colDiv = document.createElement('div');
+                colDiv.className = 'col-span-12 sm:col-span-6 md:col-span-4';
+                colDiv.id = 'dynamic-atm-wrapper-' + i;
+                colDiv.innerHTML = `
+                    <label for="atm_id_${i}" class="block text-xs font-semibold text-gray-700 mb-1.5">
+                        ATM ${i} ID <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="atm_id_${i}" id="atm_id_${i}"
+                        value="${escapeHtml(existingVal)}"
+                        placeholder="e.g. S1AC0011${i}"
+                        required
+                        ${viewMode ? 'disabled' : ''}
+                        class="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition ${viewMode ? 'field-disabled' : 'bg-white hover:border-gray-400'}">
+                `;
+                container.appendChild(colDiv);
+            }
+        }
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function toggleUPSFields(val) {

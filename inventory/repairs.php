@@ -503,26 +503,6 @@ function renderTable() {
             </td>
         </tr>
     `}).join('');
-}$' + parseFloat(repair.estimated_cost).toFixed(2) : '-'}</td>
-            <td class="px-6 py-4">
-                <span class="inline-flex items-center px-2.5 py-1 ${statusConfig.color} rounded-full text-xs font-medium">
-                    <i class="fas ${statusConfig.icon} mr-1.5"></i>${statusConfig.label}
-                </span>
-            </td>
-            <td class="px-6 py-4">
-                <div class="flex items-center space-x-2">
-                    <button onclick="viewRepairDetail(${repair.id})" class="p-2 text-gray-500 hover:text-primary" title="View Details">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${state.permissions.canComplete && repair.status !== 'completed' && repair.status !== 'cancelled' ? `
-                    <button onclick="openCompleteRepairModal(${repair.id})" class="p-2 text-gray-500 hover:text-green-600" title="Complete Repair">
-                        <i class="fas fa-check-circle"></i>
-                    </button>
-                    ` : ''}
-                </div>
-            </td>
-        </tr>
-    `}).join('');
 }
 
 function renderPagination() {
@@ -712,7 +692,16 @@ async function submitCompleteRepair(event) {
 function exportRepairs() {
     const params = new URLSearchParams();
     if (state.filters.status) params.append('status', state.filters.status);
-    window.open(`../api/inventory/export/index.php?type=repairs&${params}`, '_blank');
+    params.append('format', 'xlsx');
+    params.append('download', 'true');
+    
+    const url = `../api/inventory/export/index.php?type=repairs&${params}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // Utility functions

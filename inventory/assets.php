@@ -906,8 +906,16 @@ async function exportAssets() {
         if (state.filters.warehouse_id) params.append('warehouse_id', state.filters.warehouse_id);
         if (state.filters.product_id) params.append('product_id', state.filters.product_id);
         if (state.filters.status) params.append('status', state.filters.status);
+        params.append('format', 'xlsx');
+        params.append('download', 'true');
         
-        window.open(`../api/inventory/export/index.php?type=assets&${params}`, '_blank');
+        const url = `../api/inventory/export/index.php?type=assets&${params}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     } catch (error) {
         console.error('Error exporting:', error);
         showError('Failed to export assets');

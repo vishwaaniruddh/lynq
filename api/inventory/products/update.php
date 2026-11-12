@@ -37,9 +37,9 @@ require_once __DIR__ . '/../../../services/InventoryAuditService.php';
 ApiResponse::setCorsHeaders();
 ApiResponse::handlePreflight();
 
-// Only allow PUT
-if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
-    ApiResponse::methodNotAllowed(['PUT']);
+// Allow POST and PUT
+if (!in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT'])) {
+    ApiResponse::methodNotAllowed(['POST', 'PUT']);
 }
 
 try {
@@ -51,18 +51,17 @@ try {
     // Require authentication - only ADV users can update products
     $currentUser = $authMiddleware->requireAdvUser();
     
-    // Get product ID from query
-    $productId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+    // Get JSON input
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!$input) {
+        $input = $_POST ?? [];
+    }
+    
+    // Get product ID from query or body
+    $productId = isset($_GET['id']) ? (int)$_GET['id'] : (isset($input['id']) ? (int)$input['id'] : null);
     
     if (!$productId) {
         ApiResponse::validationError(['id' => 'Product ID is required']);
-    }
-    
-    // Get JSON input
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    if (!$input) {
-        ApiResponse::validationError(['body' => 'Invalid JSON body']);
     }
     
     $productRepository = new ProductRepository();
@@ -156,18 +155,16 @@ try {
     $auditService->logAction(
         'product_updated',
         'product',
-        $productId,
-        $currentUser['id'],
-        null,
-        null,
-        null,
-        null,
-        $oldValues,
-        $updateData
+        (int)$productId,
+        (int)$currentUser['id'],
+        [
+            'old_values' => $oldValues,
+            'new_values' => $updateData
+        ]
     );
     
     // Log API access
-    $authMiddleware->logApiAccess($currentUser['id'], '/api/inventory/products/update', 'PUT', [
+    $authMiddleware->logApiAccess($currentUser['id'], '/api/inventory/products/update', $_SERVER['REQUEST_METHOD'], [
         'product_id' => $productId,
         'fields' => array_keys($updateData)
     ]);

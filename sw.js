@@ -1430,8 +1430,7 @@ async function optimizePreloading() {
         // Identify critical resources that should be preloaded
         const criticalResources = [
             '/dashboard.php',
-            '/assets/css/tailwind.css',
-            '/assets/css/app.css',
+            '/assets/css/offline.css',
             '/assets/js/app.js',
             '/assets/js/pwa-manager.js'
         ];

@@ -184,6 +184,13 @@ class StockService {
         
         try {
             // Create asset record
+            $allowedColumns = [
+                'product_id', 'warehouse_id', 'serial_number', 'status',
+                'working_condition', 'current_holder_type', 'current_holder_id',
+                'source_warehouse_id', 'warranty_expiry', 'notes', 'created_by', 'updated_by'
+            ];
+            $cleanAdditionalData = array_intersect_key($additionalData, array_flip($allowedColumns));
+            
             $assetData = array_merge([
                 'product_id' => $productId,
                 'warehouse_id' => $warehouseId,
@@ -195,7 +202,7 @@ class StockService {
                 'source_warehouse_id' => $warehouseId,
                 'created_by' => $userId,
                 'updated_by' => $userId
-            ], $additionalData);
+            ], $cleanAdditionalData);
             
             $asset = $this->assetRepository->create($assetData);
             

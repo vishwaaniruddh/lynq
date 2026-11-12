@@ -361,7 +361,9 @@ class InventoryExportService {
             'working_condition' => $record['working_condition'] ?? '',
             'current_holder_type' => $record['current_holder_type'] ?? '',
             'current_holder_id' => $record['current_holder_id'] ?? null,
+            'current_holder_name' => $record['current_holder_name'] ?? ($record['warehouse_name'] ?? ''),
             'source_warehouse_id' => $record['source_warehouse_id'] ?? null,
+            'source_warehouse_name' => $record['source_warehouse_name'] ?? ($record['warehouse_name'] ?? ''),
             'warranty_expiry' => $record['warranty_expiry'] ?? null,
             'notes' => $record['notes'] ?? '',
             'created_at' => $record['created_at'] ?? null,
@@ -568,23 +570,42 @@ class InventoryExportService {
     }
     
     /**
-     * Generate Excel export (simplified - returns CSV with xlsx extension)
-     * For full Excel support, PHPSpreadsheet would be needed
+     * Generate native Excel (.xlsx) export using SimpleXLSXGen
      * 
      * @param array $data Formatted data
      * @param string $type Export type
      * @return array Result with Excel content
      */
     private function generateExcel(array $data, string $type): array {
-        // For now, generate CSV content (can be opened in Excel)
-        // Full Excel support would require PHPSpreadsheet library
-        $csvResult = $this->generateCsv($data, $type);
+        require_once __DIR__ . '/../utils/SimpleXLSXGen.php';
+        
+        if (empty($data)) {
+            $rows = [['No data to export']];
+        } else {
+            // Header row with bold formatting
+            $headers = array_keys($data[0]);
+            $rows = [array_map(function($h) { return '<b>' . htmlspecialchars($h) . '</b>'; }, $headers)];
+            
+            foreach ($data as $record) {
+                $row = [];
+                foreach ($record as $val) {
+                    if (is_array($val) || is_object($val)) {
+                        $row[] = json_encode($val);
+                    } else {
+                        $row[] = $val;
+                    }
+                }
+                $rows[] = $row;
+            }
+        }
+        
+        $sheetTitle = ucfirst($type);
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($rows, $sheetTitle);
         
         return [
-            'content' => $csvResult['content'],
-            'filename' => str_replace('.csv', '.csv', $csvResult['filename']),
-            'mime_type' => 'text/csv',
-            'note' => 'CSV format compatible with Excel'
+            'content' => (string) $xlsx,
+            'filename' => $type . '_export_' . date('Y-m-d_His') . '.xlsx',
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         ];
     }
     

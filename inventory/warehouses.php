@@ -98,6 +98,9 @@ ob_start();
             <thead class="bg-gray-50/80">
                 <tr>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider w-12">#</th>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" data-sort="id">
+                        Warehouse ID <i class="fas fa-sort ml-1"></i>
+                    </th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" data-sort="name">
                         Warehouse <i class="fas fa-sort ml-1"></i>
                     </th>
@@ -112,7 +115,7 @@ ob_start();
             </thead>
             <tbody id="warehouses-tbody" class="divide-y divide-gray-100">
                 <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">Loading...</td>
+                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">Loading...</td>
                 </tr>
             </tbody>
         </table>
@@ -226,6 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCompanies();
     loadWarehouses();
     setupEventListeners();
+    updateSortIndicators();
 });
 
 // Setup event listeners
@@ -323,6 +327,10 @@ async function loadWarehouses() {
         if (state.filters.search) params.append('search', state.filters.search);
         if (state.filters.company_id) params.append('company_id', state.filters.company_id);
         if (state.filters.status) params.append('status', state.filters.status);
+        if (state.sort.field) {
+            params.append('sort', state.sort.field);
+            params.append('order', state.sort.direction);
+        }
         
         const response = await fetch(`${API_URL}/index.php?${params}`, { credentials: 'include' });
         const data = await response.json();
@@ -355,7 +363,7 @@ function renderTable() {
     if (state.warehouses.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                     <i class="fas fa-warehouse text-4xl mb-3 text-gray-300"></i>
                     <p>No warehouses found</p>
                 </td>
@@ -369,6 +377,9 @@ function renderTable() {
     tbody.innerHTML = state.warehouses.map((warehouse, index) => `
         <tr class="hover:bg-gray-50/50 transition-colors">
             <td class="px-4 py-2.5 text-xs text-gray-500 font-mono">#${startNum + index + 1}</td>
+            <td class="px-4 py-2.5 text-xs">
+                <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono font-semibold text-[11px] border border-slate-200">${warehouse.id}</span>
+            </td>
             <td class="px-4 py-2.5">
                 <div class="flex items-center">
                     <div class="w-7 h-7 bg-gradient-to-br ${warehouse.status === 'active' ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100'} rounded-lg flex items-center justify-center mr-2.5 flex-shrink-0">

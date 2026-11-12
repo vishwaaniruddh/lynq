@@ -41,6 +41,7 @@ $canBulkUpload = can('inventory.stock.bulk') || $isAdv;
 
 ob_start();
 ?>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <div class="space-y-6">
     <!-- Stock Levels Section -->
@@ -217,7 +218,7 @@ ob_start();
 <div id="bulk-upload-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="closeBulkUploadModal()"></div>
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full relative z-10 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full relative z-10 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10">
                 <h3 class="text-lg font-semibold text-gray-800">Bulk Stock Upload</h3>
                 <button onclick="closeBulkUploadModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition">
@@ -230,6 +231,7 @@ ob_start();
                     <h4 class="font-medium text-blue-800 mb-2"><i class="fas fa-info-circle mr-2"></i>Instructions</h4>
                     <ul class="text-sm text-blue-700 space-y-1">
                         <li>• Download the template file and fill in your stock data</li>
+                        <li>• Maximum <strong>1,000 rows</strong> allowed per upload</li>
                         <li>• For serializable products, enter one serial number per row</li>
                         <li>• For non-serializable products, enter the quantity</li>
                         <li>• All rows will be validated before processing</li>
@@ -266,6 +268,7 @@ ob_start();
                         </div>
                     </div>
                     <p class="text-[10px] text-gray-500 mt-2"><span class="text-red-500">*</span> Required fields. Serial number required for serializable products, quantity for non-serializable.</p>
+                    <p class="text-[11px] text-indigo-600 font-semibold mt-1.5"><i class="fas fa-info-circle mr-1"></i>Active Warehouse ID: <span class="font-bold underline">27260</span> (Mumbai Main HUB) | Product ID: <span class="font-bold underline">1</span> (Router ADV 50)</p>
                 </div>
                 
                 <!-- Download Template -->
@@ -306,24 +309,74 @@ ob_start();
                 </div>
                 
                 <!-- Validation Results -->
-                <div id="validation-results" class="hidden">
-                    <div id="validation-success" class="hidden p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <div class="flex items-center">
-                            <i class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
-                            <div>
-                                <p class="font-medium text-green-800">Validation Passed</p>
-                                <p id="validation-success-msg" class="text-sm text-green-600"></p>
+                <div id="validation-results" class="hidden space-y-4">
+                    <!-- Status Alerts -->
+                    <div id="validation-success" class="hidden p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-emerald-500 text-xl mr-3"></i>
+                                <div>
+                                    <p class="font-semibold text-emerald-800">Validation Passed</p>
+                                    <p id="validation-success-msg" class="text-sm text-emerald-600"></p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div id="validation-errors" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <div class="flex items-start">
-                            <i class="fas fa-exclamation-circle text-red-500 text-xl mr-3 mt-0.5"></i>
-                            <div class="flex-1">
-                                <p class="font-medium text-red-800">Validation Errors</p>
-                                <p id="validation-error-summary" class="text-sm text-red-600 mb-2"></p>
-                                <div id="validation-error-list" class="max-h-40 overflow-y-auto text-sm text-red-700 space-y-1"></div>
+                    
+                    <div id="validation-errors" class="hidden p-4 bg-red-50 border border-red-200 rounded-xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-red-500 text-xl mr-3 mt-0.5"></i>
+                                <div>
+                                    <p class="font-semibold text-red-800">Validation Failed</p>
+                                    <p id="validation-error-summary" class="text-sm text-red-600"></p>
+                                </div>
                             </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="removeFailedBulkRows()" class="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-semibold shadow-sm transition flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fas fa-trash-alt"></i> Remove Failed Rows
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Table Toolbar (Counts & Tabs) -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-gray-100">
+                        <div class="flex items-center gap-2" id="bulk-filter-tabs">
+                            <button type="button" onclick="setBulkFilterTab('all')" id="tab-btn-all" class="px-3 py-1 rounded-lg text-xs font-medium bg-gray-900 text-white shadow-sm transition">
+                                All Rows (<span id="count-all">0</span>)
+                            </button>
+                            <button type="button" onclick="setBulkFilterTab('failed')" id="tab-btn-failed" class="px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 text-red-600 hover:bg-red-50 transition">
+                                Failed (<span id="count-failed">0</span>)
+                            </button>
+                            <button type="button" onclick="setBulkFilterTab('passed')" id="tab-btn-passed" class="px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 text-emerald-600 hover:bg-emerald-50 transition">
+                                Passed (<span id="count-passed">0</span>)
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                            <span id="bulk-rows-subtext">Delete invalid row(s) to enable upload for remaining valid rows</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Rows Table Container -->
+                    <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        <div class="max-h-[340px] overflow-y-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-gray-50/90 sticky top-0 z-10 border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider text-[10px]">
+                                    <tr>
+                                        <th class="px-3 py-2 w-14 text-center">Row</th>
+                                        <th class="px-3 py-2">Warehouse</th>
+                                        <th class="px-3 py-2">Product</th>
+                                        <th class="px-3 py-2">Serial / Qty</th>
+                                        <th class="px-3 py-2 w-20 text-center">Status</th>
+                                        <th class="px-3 py-2">Validation Note / Error</th>
+                                        <th class="px-3 py-2 w-20 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulk-rows-tbody" class="divide-y divide-gray-100 bg-white">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -342,6 +395,7 @@ ob_start();
                 <!-- Upload Results -->
                 <div id="upload-results" class="hidden p-4 bg-gray-50 rounded-lg">
                     <h4 class="font-medium text-gray-800 mb-3">Upload Results</h4>
+                    <div id="upload-result-message" class="hidden mb-3 p-3 text-xs rounded-lg font-medium"></div>
                     <div class="grid grid-cols-3 gap-4 text-center">
                         <div class="p-3 bg-white rounded-lg">
                             <p id="result-total" class="text-2xl font-bold text-gray-800">0</p>
@@ -388,7 +442,9 @@ const state = {
     },
     bulkUpload: {
         file: null,
-        parsedData: null,
+        parsedData: [],
+        validationErrors: {},
+        activeTab: 'all',
         validated: false
     }
 };
@@ -1098,7 +1154,13 @@ function closeBulkUploadModal() {
 }
 
 function resetBulkUploadState() {
-    state.bulkUpload = { file: null, parsedData: null, validated: false };
+    state.bulkUpload = { 
+        file: null, 
+        parsedData: [], 
+        validationErrors: {}, 
+        activeTab: 'all', 
+        validated: false 
+    };
     document.getElementById('bulk-file-input').value = '';
     document.getElementById('selected-file-info').classList.add('hidden');
     document.getElementById('validation-results').classList.add('hidden');
@@ -1106,17 +1168,25 @@ function resetBulkUploadState() {
     document.getElementById('validation-errors').classList.add('hidden');
     document.getElementById('upload-progress').classList.add('hidden');
     document.getElementById('upload-results').classList.add('hidden');
+    const resMsg = document.getElementById('upload-result-message');
+    if (resMsg) {
+        resMsg.className = 'hidden mb-3 p-3 text-xs rounded-lg font-medium';
+        resMsg.textContent = '';
+    }
     document.getElementById('validate-btn').disabled = true;
     document.getElementById('upload-btn').disabled = true;
+    document.getElementById('upload-btn').innerHTML = '<i class="fas fa-upload mr-2"></i>Upload';
+    const tbody = document.getElementById('bulk-rows-tbody');
+    if (tbody) tbody.innerHTML = '';
 }
 
 function downloadBulkTemplate() {
+    const warehouseId = (state.warehouses && state.warehouses.length > 0) ? state.warehouses[0].id : '27260';
+    const warehouseName = (state.warehouses && state.warehouses.length > 0) ? state.warehouses[0].name : 'Mumbai Main HUB';
     const headers = ['warehouse_id', 'product_id', 'serial_number', 'quantity', 'is_repairable', 'notes'];
     const sampleData = [
-        ['1', '1', '', '10', '0', 'Sample non-serializable entry (quantity based)'],
-        ['1', '2', 'SN-001', '1', '1', 'Sample serializable entry (repairable)'],
-        ['1', '2', 'SN-002', '1', '1', 'Another serializable entry'],
-        ['1', '3', 'ASSET-001', '1', '0', 'Non-repairable serializable item']
+        [warehouseId, '1', 'ADV-ROUTER-001', '1', '1', `Router ADV 50 in ${warehouseName}`],
+        [warehouseId, '1', 'ADV-ROUTER-002', '1', '1', `Router ADV 50 in ${warehouseName}`]
     ];
     
     const csv = [headers.join(','), ...sampleData.map(r => r.join(','))].join('\n');
@@ -1152,9 +1222,7 @@ function handleFileSelect(event) {
 }
 
 function handleFile(file) {
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
     const validExtensions = ['.csv', '.xls', '.xlsx'];
-    
     const extension = '.' + file.name.split('.').pop().toLowerCase();
     if (!validExtensions.includes(extension)) {
         showError('Invalid file type. Please upload a CSV or Excel file.');
@@ -1163,12 +1231,15 @@ function handleFile(file) {
     
     state.bulkUpload.file = file;
     state.bulkUpload.validated = false;
+    state.bulkUpload.validationErrors = {};
+    state.bulkUpload.activeTab = 'all';
     
     document.getElementById('selected-file-name').textContent = file.name;
-    document.getElementById('selected-file-size').textContent = formatFileSize(file.size);
+    document.getElementById('selected-file-size').textContent = `${formatFileSize(file.size)} • Reading rows...`;
     document.getElementById('selected-file-info').classList.remove('hidden');
-    document.getElementById('validate-btn').disabled = false;
+    document.getElementById('validate-btn').disabled = true;
     document.getElementById('upload-btn').disabled = true;
+    document.getElementById('upload-btn').innerHTML = '<i class="fas fa-upload mr-2"></i>Upload';
     
     // Hide previous results
     document.getElementById('validation-results').classList.add('hidden');
@@ -1191,30 +1262,117 @@ function formatFileSize(bytes) {
 }
 
 async function parseFile(file) {
-    const extension = file.name.split('.').pop().toLowerCase();
+    const extension = '.' + file.name.split('.').pop().toLowerCase();
     
-    if (extension === 'csv') {
-        const text = await file.text();
-        state.bulkUpload.parsedData = parseCSV(text);
-    } else {
-        // For Excel files, we'll send to server for parsing
-        state.bulkUpload.parsedData = null;
+    try {
+        if (extension === '.csv') {
+            const text = await file.text();
+            state.bulkUpload.parsedData = parseCSV(text);
+        } else if (['.xlsx', '.xls'].includes(extension) && typeof XLSX !== 'undefined') {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawJson = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            state.bulkUpload.parsedData = rawJson.map((row, idx) => {
+                const norm = { _row_number: idx + 2 };
+                Object.keys(row).forEach(k => {
+                    norm[k.trim().toLowerCase()] = String(row[k]).trim();
+                });
+                return norm;
+            });
+        } else if (['.xlsx', '.xls'].includes(extension)) {
+            showError('Excel parsing library not loaded. Please upload CSV format.');
+            return;
+        }
+        
+        state.bulkUpload.validationErrors = {};
+        state.bulkUpload.activeTab = 'all';
+        state.bulkUpload.validated = false;
+        
+        const count = (state.bulkUpload.parsedData || []).length;
+        const sizeText = `${formatFileSize(file.size)} • ${count} row${count === 1 ? '' : 's'} detected`;
+        
+        if (count > 1000) {
+            document.getElementById('selected-file-size').innerHTML = 
+                `${sizeText} • <span class="text-red-600 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>Exceeds limit of 1,000 rows</span>`;
+            document.getElementById('validate-btn').disabled = true;
+            document.getElementById('upload-btn').disabled = true;
+            
+            document.getElementById('validation-results').classList.remove('hidden');
+            document.getElementById('validation-success').classList.add('hidden');
+            document.getElementById('validation-errors').classList.remove('hidden');
+            document.getElementById('validation-error-summary').innerHTML = 
+                `This file contains <strong>${count}</strong> rows. Maximum <strong>1,000 rows</strong> allowed per upload (${count - 1000} rows over limit). Please reduce rows or split into smaller files.`;
+            
+            showError(`Maximum 1,000 rows allowed per upload. File contains ${count} rows.`);
+        } else {
+            document.getElementById('selected-file-size').textContent = sizeText;
+            document.getElementById('validate-btn').disabled = count === 0;
+            document.getElementById('upload-btn').disabled = true;
+        }
+    } catch (err) {
+        console.error('Error parsing file:', err);
+        showError('Failed to parse file: ' + err.message);
     }
 }
 
+function extractApiErrorMessage(data, fallback = 'Operation failed') {
+    if (!data) return fallback;
+    if (data.error) {
+        if (typeof data.error.details === 'object' && data.error.details !== null) {
+            const vals = Object.values(data.error.details).filter(Boolean);
+            if (vals.length > 0) {
+                return vals.join('; ');
+            }
+        } else if (typeof data.error.details === 'string' && data.error.details.trim()) {
+            return data.error.details;
+        }
+        if (data.error.message) return data.error.message;
+    }
+    if (data.message) return data.message;
+    return fallback;
+}
+
+function parseCSVLine(text) {
+    const result = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '"') {
+            if (inQuotes && text[i + 1] === '"') {
+                cur += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (c === ',' && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+        } else {
+            cur += c;
+        }
+    }
+    result.push(cur.trim());
+    return result;
+}
+
 function parseCSV(text) {
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 2) return [];
     
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const headers = parseCSVLine(lines[0]).map(h => h.replace(/^["']|["']$/g, '').trim().toLowerCase());
     const rows = [];
     
     for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const row = { _row_number: i + 1 };
+        const values = parseCSVLine(lines[i]);
+        if (values.length === 0 || (values.length === 1 && !values[0])) continue;
         
+        const row = { _row_number: i + 1 };
         headers.forEach((header, index) => {
-            row[header] = values[index] || '';
+            let val = values[index] !== undefined ? values[index] : '';
+            val = val.replace(/^["']|["']$/g, '').trim();
+            row[header] = val;
         });
         
         rows.push(row);
@@ -1224,8 +1382,19 @@ function parseCSV(text) {
 }
 
 async function validateBulkUpload() {
-    if (!state.bulkUpload.file) {
-        showError('Please select a file first');
+    if (!state.bulkUpload.file || !state.bulkUpload.parsedData || state.bulkUpload.parsedData.length === 0) {
+        showError('Please select a file with valid rows first');
+        return;
+    }
+    
+    const rows = state.bulkUpload.parsedData;
+    if (rows.length > 1000) {
+        showError(`Maximum 1,000 rows allowed per upload. Your file has ${rows.length} rows.`);
+        document.getElementById('validation-results').classList.remove('hidden');
+        document.getElementById('validation-success').classList.add('hidden');
+        document.getElementById('validation-errors').classList.remove('hidden');
+        document.getElementById('validation-error-summary').innerHTML = 
+            `File has <strong>${rows.length}</strong> rows. Maximum <strong>1,000 rows</strong> allowed per upload. Please split the file into batches of 1,000 rows or fewer.`;
         return;
     }
     
@@ -1234,15 +1403,6 @@ async function validateBulkUpload() {
     validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Validating...';
     
     try {
-        let rows = state.bulkUpload.parsedData;
-        
-        // If no parsed data (Excel file), send file to server
-        if (!rows) {
-            // For now, show error - Excel parsing would need server-side support
-            showError('Excel file parsing requires server-side processing. Please use CSV format.');
-            return;
-        }
-        
         const response = await fetch(`${API_URL}/bulk.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1252,49 +1412,309 @@ async function validateBulkUpload() {
         
         const data = await response.json();
         
-        document.getElementById('validation-results').classList.remove('hidden');
-        
-        if (data.success && data.data.validation.success) {
-            document.getElementById('validation-success').classList.remove('hidden');
-            document.getElementById('validation-errors').classList.add('hidden');
-            document.getElementById('validation-success-msg').textContent = 
-                `${data.data.validation.validCount} rows validated successfully`;
+        // Handle server-level validation errors (e.g. max rows exceeded, unauthorized warehouse, invalid format)
+        if (!response.ok || !data.success) {
+            const errorMsg = extractApiErrorMessage(data, 'Validation failed');
+            showError(errorMsg);
             
-            state.bulkUpload.validated = true;
-            document.getElementById('upload-btn').disabled = false;
-        } else {
+            document.getElementById('validation-results').classList.remove('hidden');
             document.getElementById('validation-success').classList.add('hidden');
             document.getElementById('validation-errors').classList.remove('hidden');
-            
-            const validation = data.data?.validation || data;
-            document.getElementById('validation-error-summary').textContent = 
-                `${validation.invalidCount || 0} rows have errors`;
-            
-            const errorList = document.getElementById('validation-error-list');
-            const errors = validation.errors || [];
-            errorList.innerHTML = errors.slice(0, 20).map(e => 
-                `<p>Row ${e.row}: ${e.message}</p>`
-            ).join('');
-            
-            if (errors.length > 20) {
-                errorList.innerHTML += `<p class="font-medium">... and ${errors.length - 20} more errors</p>`;
-            }
+            document.getElementById('validation-error-summary').innerHTML = 
+                `<strong>Validation Failed:</strong> ${escapeHtml(errorMsg)}`;
             
             state.bulkUpload.validated = false;
-            document.getElementById('upload-btn').disabled = true;
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload';
+            return;
         }
+        
+        document.getElementById('validation-results').classList.remove('hidden');
+        
+        const validation = data.data?.validation || data.validation || {};
+        let errors = validation.errors || {};
+        
+        if (Array.isArray(errors)) {
+            const errObj = {};
+            errors.forEach(e => {
+                const rNum = String(e.row || e.row_number || e._row_number || '');
+                if (!errObj[rNum]) errObj[rNum] = [];
+                errObj[rNum].push(e);
+            });
+            errors = errObj;
+        }
+        
+        state.bulkUpload.validationErrors = errors;
+        const hasErrors = Object.keys(errors).length > 0;
+        state.bulkUpload.activeTab = hasErrors ? 'failed' : 'all';
+        state.bulkUpload.validated = !hasErrors;
+        
+        updateBulkValidationState();
+        
     } catch (error) {
         console.error('Error validating:', error);
-        showError('Failed to validate file. Please try again.');
+        showError('Failed to validate file: ' + error.message);
     } finally {
         validateBtn.disabled = false;
         validateBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Validate';
     }
 }
 
+function updateBulkValidationState() {
+    const allRows = state.bulkUpload.parsedData || [];
+    const total = allRows.length;
+    
+    // Filter active errors for existing rows only
+    const validRowNums = new Set(allRows.map(r => String(r._row_number)));
+    const activeErrors = {};
+    Object.keys(state.bulkUpload.validationErrors || {}).forEach(k => {
+        if (validRowNums.has(String(k))) {
+            activeErrors[k] = state.bulkUpload.validationErrors[k];
+        }
+    });
+    state.bulkUpload.validationErrors = activeErrors;
+    
+    const invalidCount = Object.keys(activeErrors).length;
+    const validCount = Math.max(0, total - invalidCount);
+    
+    // Update badge counts in tabs
+    const countAllEl = document.getElementById('count-all');
+    const countFailedEl = document.getElementById('count-failed');
+    const countPassedEl = document.getElementById('count-passed');
+    if (countAllEl) countAllEl.textContent = total;
+    if (countFailedEl) countFailedEl.textContent = invalidCount;
+    if (countPassedEl) countPassedEl.textContent = validCount;
+    
+    const uploadBtn = document.getElementById('upload-btn');
+    const validateBtn = document.getElementById('validate-btn');
+    
+    if (total === 0) {
+        state.bulkUpload.validated = false;
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload';
+        if (validateBtn) validateBtn.disabled = true;
+        document.getElementById('validation-success').classList.add('hidden');
+        document.getElementById('validation-errors').classList.add('hidden');
+    } else if (total > 1000) {
+        state.bulkUpload.validated = false;
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload (Limit: 1,000 Rows Max)';
+        if (validateBtn) validateBtn.disabled = true;
+        document.getElementById('validation-success').classList.add('hidden');
+        document.getElementById('validation-errors').classList.remove('hidden');
+        document.getElementById('validation-error-summary').innerHTML = 
+            `File has <strong>${total}</strong> rows. Maximum <strong>1,000 rows</strong> allowed per upload (${total - 1000} rows over limit). Please delete excess rows below or split into smaller files.`;
+    } else if (invalidCount === 0 && state.bulkUpload.validated) {
+        // 100% valid!
+        if (validateBtn) validateBtn.disabled = false;
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = `<i class="fas fa-upload mr-2"></i>Upload ${validCount} Valid Row${validCount === 1 ? '' : 's'}`;
+        
+        document.getElementById('validation-success').classList.remove('hidden');
+        document.getElementById('validation-errors').classList.add('hidden');
+        document.getElementById('validation-success-msg').innerHTML = 
+            `All <strong>${validCount}</strong> row${validCount === 1 ? '' : 's'} passed validation and are ready to be uploaded!`;
+            
+        if (state.bulkUpload.activeTab === 'failed') {
+            state.bulkUpload.activeTab = 'all';
+        }
+    } else {
+        // Has failed rows or not yet validated
+        if (validateBtn) validateBtn.disabled = false;
+        state.bulkUpload.validated = false;
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload';
+        
+        document.getElementById('validation-success').classList.add('hidden');
+        document.getElementById('validation-errors').classList.remove('hidden');
+        document.getElementById('validation-error-summary').innerHTML = 
+            `Found <strong>${invalidCount}</strong> invalid row${invalidCount === 1 ? '' : 's'} and <strong>${validCount}</strong> valid row${validCount === 1 ? '' : 's'}. Delete the failed row(s) below or click <strong>Remove Failed Rows</strong> to upload the remaining ${validCount} valid row${validCount === 1 ? '' : 's'}.`;
+    }
+    
+    setBulkFilterTab(state.bulkUpload.activeTab || 'all');
+}
+
+function setBulkFilterTab(tab) {
+    state.bulkUpload.activeTab = tab;
+    
+    ['all', 'failed', 'passed'].forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (!btn) return;
+        if (t === tab) {
+            btn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-gray-900 text-white shadow-sm transition';
+        } else {
+            const colorClass = t === 'failed' ? 'text-red-600 hover:bg-red-50' : (t === 'passed' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-600 hover:bg-gray-100');
+            btn.className = `px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 ${colorClass} transition`;
+        }
+    });
+    
+    renderBulkRowsTable();
+}
+
+function renderBulkRowsTable() {
+    const tbody = document.getElementById('bulk-rows-tbody');
+    if (!tbody) return;
+    
+    const allRows = state.bulkUpload.parsedData || [];
+    const errors = state.bulkUpload.validationErrors || {};
+    
+    let displayRows = allRows;
+    if (state.bulkUpload.activeTab === 'failed') {
+        displayRows = allRows.filter(r => {
+            const errs = errors[String(r._row_number)];
+            return errs && (Array.isArray(errs) ? errs.length > 0 : true);
+        });
+    } else if (state.bulkUpload.activeTab === 'passed') {
+        displayRows = allRows.filter(r => {
+            const errs = errors[String(r._row_number)];
+            return !errs || (Array.isArray(errs) && errs.length === 0);
+        });
+    }
+    
+    if (displayRows.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                    <p class="text-sm font-medium">No rows in this tab</p>
+                    <p class="text-xs text-gray-400 mt-1">${state.bulkUpload.activeTab === 'failed' ? 'Great! No invalid rows remain.' : 'No rows match filter'}</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = displayRows.map((row) => {
+        const rowNumStr = String(row._row_number);
+        const rowErrors = errors[rowNumStr];
+        const isFailed = rowErrors && (Array.isArray(rowErrors) ? rowErrors.length > 0 : true);
+        
+        let errorMsg = '';
+        if (isFailed) {
+            if (Array.isArray(rowErrors)) {
+                errorMsg = rowErrors.map(e => e.message || JSON.stringify(e)).join('; ');
+            } else if (typeof rowErrors === 'object') {
+                errorMsg = rowErrors.message || JSON.stringify(rowErrors);
+            } else {
+                errorMsg = String(rowErrors);
+            }
+        }
+        
+        const serialOrQty = row.serial_number ? 
+            `<span class="font-mono text-gray-800 font-medium">${escapeHtml(row.serial_number)}</span>` : 
+            (row.quantity ? `<span class="text-gray-700">${escapeHtml(row.quantity)} units</span>` : '-');
+            
+        const product = state.products.find(p => String(p.id) === String(row.product_id));
+        const productDisplay = product ? 
+            `<span class="font-medium text-gray-800">${escapeHtml(product.name)}</span> <span class="text-gray-400 font-mono text-[10px]">(#${row.product_id})</span>` :
+            `<span class="font-mono text-gray-700">#${escapeHtml(row.product_id)}</span>`;
+            
+        const warehouse = state.warehouses.find(w => String(w.id) === String(row.warehouse_id));
+        const warehouseDisplay = warehouse ? 
+            `<span class="font-medium text-gray-800">${escapeHtml(warehouse.name)}</span> <span class="text-gray-400 font-mono text-[10px]">(#${row.warehouse_id})</span>` :
+            `<span class="font-mono text-gray-700">#${escapeHtml(row.warehouse_id)}</span>`;
+            
+        return `
+            <tr class="${isFailed ? 'bg-red-50/50 hover:bg-red-50/80' : 'hover:bg-gray-50/70'} transition-colors">
+                <td class="px-3 py-2 text-center font-mono font-medium text-gray-600">
+                    #${row._row_number}
+                </td>
+                <td class="px-3 py-2">
+                    ${warehouseDisplay}
+                </td>
+                <td class="px-3 py-2">
+                    ${productDisplay}
+                </td>
+                <td class="px-3 py-2">
+                    ${serialOrQty}
+                </td>
+                <td class="px-3 py-2 text-center whitespace-nowrap">
+                    ${isFailed ? 
+                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times-circle mr-1 text-red-500"></i>Fail</span>' : 
+                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check-circle mr-1 text-emerald-500"></i>Pass</span>'
+                    }
+                </td>
+                <td class="px-3 py-2">
+                    ${isFailed ? 
+                        `<div class="text-red-700 font-medium text-xs flex items-start gap-1"><i class="fas fa-exclamation-circle text-red-500 mt-0.5 flex-shrink-0"></i><span>${escapeHtml(errorMsg)}</span></div>` : 
+                        '<span class="text-emerald-600 text-xs flex items-center gap-1"><i class="fas fa-check text-[10px]"></i>Valid</span>'
+                    }
+                </td>
+                <td class="px-3 py-2 text-center whitespace-nowrap">
+                    <button type="button" onclick="deleteBulkRow(${row._row_number})" class="px-2 py-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded text-[11px] font-medium transition shadow-sm flex items-center justify-center gap-1 mx-auto" title="Delete this row">
+                        <i class="fas fa-trash-alt text-[10px]"></i> Delete
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function deleteBulkRow(rowNumber) {
+    const targetRowNum = parseInt(rowNumber);
+    const prevCount = state.bulkUpload.parsedData.length;
+    state.bulkUpload.parsedData = state.bulkUpload.parsedData.filter(r => r._row_number !== targetRowNum);
+    delete state.bulkUpload.validationErrors[String(targetRowNum)];
+    
+    const newCount = state.bulkUpload.parsedData.length;
+    
+    if (state.bulkUpload.file) {
+        const sizeText = `${formatFileSize(state.bulkUpload.file.size)} • ${newCount} row${newCount === 1 ? '' : 's'} detected`;
+        if (newCount > 1000) {
+            document.getElementById('selected-file-size').innerHTML = 
+                `${sizeText} • <span class="text-red-600 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>Exceeds limit of 1,000 rows</span>`;
+        } else {
+            document.getElementById('selected-file-size').textContent = sizeText;
+        }
+    }
+    
+    if (newCount < prevCount) {
+        showSuccess(`Row #${targetRowNum} removed.`);
+    }
+    
+    updateBulkValidationState();
+}
+
+function removeFailedBulkRows() {
+    const errorRowNumbers = Object.keys(state.bulkUpload.validationErrors || {});
+    if (errorRowNumbers.length === 0) return;
+    
+    const count = errorRowNumbers.length;
+    state.bulkUpload.parsedData = state.bulkUpload.parsedData.filter(r => !errorRowNumbers.includes(String(r._row_number)));
+    state.bulkUpload.validationErrors = {};
+    
+    const newCount = state.bulkUpload.parsedData.length;
+    if (state.bulkUpload.file) {
+        const sizeText = `${formatFileSize(state.bulkUpload.file.size)} • ${newCount} row${newCount === 1 ? '' : 's'} detected`;
+        if (newCount > 1000) {
+            document.getElementById('selected-file-size').innerHTML = 
+                `${sizeText} • <span class="text-red-600 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>Exceeds limit of 1,000 rows</span>`;
+        } else {
+            document.getElementById('selected-file-size').textContent = sizeText;
+        }
+    }
+    
+    showSuccess(`Removed ${count} failed row(s). Remaining rows are ready for upload.`);
+    updateBulkValidationState();
+}
+
 async function processBulkUpload() {
-    if (!state.bulkUpload.validated || !state.bulkUpload.parsedData) {
-        showError('Please validate the file first');
+    if (!state.bulkUpload.validated || !state.bulkUpload.parsedData || state.bulkUpload.parsedData.length === 0) {
+        showError('Please validate the file first before uploading');
+        return;
+    }
+    
+    if (state.bulkUpload.parsedData.length > 1000) {
+        showError(`Maximum 1,000 rows allowed per upload. You currently have ${state.bulkUpload.parsedData.length} rows.`);
+        return;
+    }
+    
+    // Check if there are still any unhandled failed rows
+    const failedKeys = Object.keys(state.bulkUpload.validationErrors || {}).filter(k => 
+        state.bulkUpload.parsedData.some(r => String(r._row_number) === String(k))
+    );
+    if (failedKeys.length > 0) {
+        showError('Please delete or remove all failed rows before uploading.');
         return;
     }
     
@@ -1325,19 +1745,36 @@ async function processBulkUpload() {
         document.getElementById('upload-results').classList.remove('hidden');
         
         const result = data.data?.result || {};
-        document.getElementById('result-total').textContent = result.totalRows || 0;
-        document.getElementById('result-success').textContent = result.successCount || 0;
-        document.getElementById('result-errors').textContent = result.errorCount || 0;
+        const totalRows = result.totalRows || state.bulkUpload.parsedData.length || 0;
+        const successCount = result.successCount || 0;
+        const errorCount = result.errorCount || (data.success ? 0 : totalRows);
+        
+        document.getElementById('result-total').textContent = totalRows;
+        document.getElementById('result-success').textContent = successCount;
+        document.getElementById('result-errors').textContent = errorCount;
+        
+        const resultMsgEl = document.getElementById('upload-result-message');
         
         if (data.success) {
             showSuccess(result.message || 'Bulk upload completed successfully');
+            if (resultMsgEl) {
+                resultMsgEl.className = 'mb-3 p-3 bg-emerald-100 text-emerald-800 text-xs rounded-lg font-medium';
+                resultMsgEl.textContent = result.message || 'All valid rows uploaded successfully.';
+                resultMsgEl.classList.remove('hidden');
+            }
             loadStock();
         } else {
-            showError(result.message || 'Bulk upload completed with errors');
+            const errorMsg = extractApiErrorMessage(data, result.message || 'Bulk upload failed');
+            showError(errorMsg);
+            if (resultMsgEl) {
+                resultMsgEl.className = 'mb-3 p-3 bg-red-100 text-red-800 text-xs rounded-lg font-medium';
+                resultMsgEl.textContent = `Upload Failed: ${errorMsg}`;
+                resultMsgEl.classList.remove('hidden');
+            }
         }
     } catch (error) {
         console.error('Error uploading:', error);
-        showError('Failed to process upload. Please try again.');
+        showError('Failed to process upload: ' + error.message);
         document.getElementById('upload-progress').classList.add('hidden');
     } finally {
         uploadBtn.disabled = false;
@@ -1356,22 +1793,20 @@ function viewAssets(productId, warehouseId) {
 }
 
 // Export stock
-async function exportStock() {
+function exportStock() {
     try {
-        const params = new URLSearchParams({ limit: 1000 });
+        const params = new URLSearchParams();
         if (state.filters.warehouse_id) params.append('warehouse_id', state.filters.warehouse_id);
-        if (state.filters.category_id) params.append('category_id', state.filters.category_id);
-        if (state.filters.low_stock) params.append('low_stock', state.filters.low_stock);
+        params.append('format', 'xlsx');
+        params.append('download', 'true');
         
-        const response = await fetch(`${API_URL}/index.php?${params}`, { credentials: 'include' });
-        const data = await response.json();
-        
-        if (data.success) {
-            downloadStockCSV(data.data.stock, 'stock_export.csv');
-            showSuccess('Stock exported successfully');
-        } else {
-            showError(data.error?.message || 'Failed to export stock');
-        }
+        const url = `../api/inventory/export/index.php?type=stock&${params}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     } catch (error) {
         console.error('Error exporting stock:', error);
         showError('Failed to export stock. Please try again.');

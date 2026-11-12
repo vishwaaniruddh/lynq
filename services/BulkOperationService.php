@@ -245,74 +245,107 @@ class BulkOperationService {
      */
     public function generateExcelExport(array $data, array $headers, array $columnMapping = [], string $filename = 'export'): string {
         try {
-            // Create new Spreadsheet object
-            $spreadsheet = new Spreadsheet();
-            
-            // Set document properties
-            $spreadsheet->getProperties()
-                ->setCreator("Clarity CRM")
-                ->setLastModifiedBy("Clarity CRM")
-                ->setTitle("Export")
-                ->setSubject("Data Export")
-                ->setDescription("Exported data from Clarity CRM");
-            
-            $sheet = $spreadsheet->getActiveSheet();
-            
-            // Write headers
-            $col = 'A';
-            foreach ($headers as $header) {
-                $sheet->setCellValue("{$col}1", $header);
-                // Style header row
-                $sheet->getStyle("{$col}1")->getFont()->setBold(true);
-                $col++;
+            $timestamp = date('Y-m-d_His');
+            $uploadDir = is_dir($this->uploadDir) ? $this->uploadDir : (__DIR__ . '/../uploads');
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0755, true);
             }
-            
-            // If no column mapping provided, create one from headers
-            if (empty($columnMapping)) {
+            if (!is_dir($uploadDir)) {
+                $uploadDir = sys_get_temp_dir();
+            }
+
+            if (class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet') && class_exists('PhpOffice\PhpSpreadsheet\Writer\Xlsx')) {
+                // Create new Spreadsheet object
+                $spreadsheet = new Spreadsheet();
+                
+                // Set document properties
+                $spreadsheet->getProperties()
+                    ->setCreator("Clarity CRM")
+                    ->setLastModifiedBy("Clarity CRM")
+                    ->setTitle("Export")
+                    ->setSubject("Data Export")
+                    ->setDescription("Exported data from Clarity CRM");
+                
+                $sheet = $spreadsheet->getActiveSheet();
+                
+                // Write headers
                 $col = 'A';
                 foreach ($headers as $header) {
-                    // Convert header to field name (lowercase, replace spaces with underscores)
-                    $fieldName = strtolower(str_replace(' ', '_', $header));
-                    $columnMapping[$fieldName] = $col;
+                    $sheet->setCellValue("{$col}1", $header);
+                    // Style header row
+                    $sheet->getStyle("{$col}1")->getFont()->setBold(true);
                     $col++;
                 }
-            }
-            
-            // Write data rows
-            $row = 2;
-            foreach ($data as $rowData) {
-                foreach ($columnMapping as $fieldName => $column) {
-                    $value = $rowData[$fieldName] ?? '';
-                    $sheet->setCellValue("{$column}{$row}", $value);
+                
+                // If no column mapping provided, create one from headers
+                if (empty($columnMapping)) {
+                    $col = 'A';
+                    foreach ($headers as $header) {
+                        // Convert header to field name (lowercase, replace spaces with underscores)
+                        $fieldName = strtolower(str_replace(' ', '_', $header));
+                        $columnMapping[$fieldName] = $col;
+                        $col++;
+                    }
                 }
-                $row++;
+                
+                // Write data rows
+                $row = 2;
+                foreach ($data as $rowData) {
+                    foreach ($columnMapping as $fieldName => $column) {
+                        $value = $rowData[$fieldName] ?? '';
+                        $sheet->setCellValue("{$column}{$row}", $value);
+                    }
+                    $row++;
+                }
+                
+                // Auto-size columns
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                    $col++;
+                }
+                
+                $outputPath = "{$uploadDir}/{$filename}_{$timestamp}.xlsx";
+                $writer = new Xlsx($spreadsheet);
+                $writer->save($outputPath);
+                return $outputPath;
             }
-            
-            // Auto-size columns
-            $col = 'A';
-            foreach ($headers as $header) {
-                $sheet->getColumnDimension($col)->setAutoSize(true);
-                $col++;
+
+            // CSV fallback
+            $outputPath = "{$uploadDir}/{$filename}_{$timestamp}.csv";
+            $fp = fopen($outputPath, 'w');
+            if (!$fp) {
+                return '';
             }
-            
-            // Generate unique filename
-            $timestamp = date('Y-m-d_His');
-            $outputPath = "{$this->uploadDir}/{$filename}_{$timestamp}.xlsx";
-            
-            // Save file
-            $writer = new Xlsx($spreadsheet);
-            $writer->save($outputPath);
-            
+
+            fputcsv($fp, $headers);
+            $fields = [];
+            if (empty($columnMapping)) {
+                foreach ($headers as $header) {
+                    $fields[] = strtolower(str_replace(' ', '_', $header));
+                }
+            } else {
+                $fields = array_keys($columnMapping);
+            }
+
+            foreach ($data as $rowData) {
+                $line = [];
+                foreach ($fields as $field) {
+                    $line[] = $rowData[$field] ?? '';
+                }
+                fputcsv($fp, $line);
+            }
+            fclose($fp);
             return $outputPath;
             
-        } catch (Exception $e) {
-            error_log("Error generating Excel export: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            error_log("Error generating Excel/CSV export: " . $e->getMessage());
             return '';
         }
     }
     
     /**
-     * Generate an error report Excel file
+     * Generate an error report file (Excel if PhpSpreadsheet is available, CSV fallback)
      * 
      * @param array $errors Array of errors [rowNumber => errorMessages]
      * @param string $filename Output filename (without extension)
@@ -322,48 +355,75 @@ class BulkOperationService {
      */
     public function generateErrorReport(array $errors, string $filename = 'error_report'): string {
         try {
-            // Create new Spreadsheet object
-            $spreadsheet = new Spreadsheet();
-            
-            $sheet = $spreadsheet->getActiveSheet();
-            
-            // Write headers
-            $sheet->setCellValue('A1', 'Row Number');
-            $sheet->setCellValue('B1', 'Error Message');
-            $sheet->getStyle('A1:B1')->getFont()->setBold(true);
-            
-            // Write error data
-            $row = 2;
+            $timestamp = date('Y-m-d_His');
+            $uploadDir = is_dir($this->uploadDir) ? $this->uploadDir : (__DIR__ . '/../uploads');
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0755, true);
+            }
+            if (!is_dir($uploadDir)) {
+                $uploadDir = sys_get_temp_dir();
+            }
+
+            if (class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet') && class_exists('PhpOffice\PhpSpreadsheet\Writer\Xlsx')) {
+                // Create new Spreadsheet object
+                $spreadsheet = new Spreadsheet();
+                
+                $sheet = $spreadsheet->getActiveSheet();
+                
+                // Write headers
+                $sheet->setCellValue('A1', 'Row Number');
+                $sheet->setCellValue('B1', 'Error Message');
+                $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+                
+                // Write error data
+                $row = 2;
+                foreach ($errors as $rowNumber => $errorMessages) {
+                    if (is_array($errorMessages)) {
+                        foreach ($errorMessages as $error) {
+                            $message = is_array($error) ? ($error['message'] ?? json_encode($error)) : $error;
+                            $sheet->setCellValue("A{$row}", $rowNumber);
+                            $sheet->setCellValue("B{$row}", $message);
+                            $row++;
+                        }
+                    } else {
+                        $sheet->setCellValue("A{$row}", $rowNumber);
+                        $sheet->setCellValue("B{$row}", $errorMessages);
+                        $row++;
+                    }
+                }
+                
+                // Auto-size columns
+                $sheet->getColumnDimension('A')->setAutoSize(true);
+                $sheet->getColumnDimension('B')->setAutoSize(true);
+                
+                $outputPath = "{$uploadDir}/{$filename}_{$timestamp}.xlsx";
+                $writer = new Xlsx($spreadsheet);
+                $writer->save($outputPath);
+                return $outputPath;
+            }
+
+            // CSV Fallback (native PHP, 100% reliable)
+            $outputPath = "{$uploadDir}/{$filename}_{$timestamp}.csv";
+            $fp = fopen($outputPath, 'w');
+            if (!$fp) {
+                return '';
+            }
+
+            fputcsv($fp, ['Row Number', 'Error Message']);
             foreach ($errors as $rowNumber => $errorMessages) {
                 if (is_array($errorMessages)) {
                     foreach ($errorMessages as $error) {
                         $message = is_array($error) ? ($error['message'] ?? json_encode($error)) : $error;
-                        $sheet->setCellValue("A{$row}", $rowNumber);
-                        $sheet->setCellValue("B{$row}", $message);
-                        $row++;
+                        fputcsv($fp, [$rowNumber, $message]);
                     }
                 } else {
-                    $sheet->setCellValue("A{$row}", $rowNumber);
-                    $sheet->setCellValue("B{$row}", $errorMessages);
-                    $row++;
+                    fputcsv($fp, [$rowNumber, $errorMessages]);
                 }
             }
-            
-            // Auto-size columns
-            $sheet->getColumnDimension('A')->setAutoSize(true);
-            $sheet->getColumnDimension('B')->setAutoSize(true);
-            
-            // Generate unique filename
-            $timestamp = date('Y-m-d_His');
-            $outputPath = "{$this->uploadDir}/{$filename}_{$timestamp}.xlsx";
-            
-            // Save file
-            $writer = new Xlsx($spreadsheet);
-            $writer->save($outputPath);
-            
+            fclose($fp);
             return $outputPath;
             
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Error generating error report: " . $e->getMessage());
             return '';
         }

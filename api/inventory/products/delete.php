@@ -20,9 +20,9 @@ require_once __DIR__ . '/../../../repositories/ProductRepository.php';
 ApiResponse::setCorsHeaders();
 ApiResponse::handlePreflight();
 
-// Only allow DELETE
-if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
-    ApiResponse::methodNotAllowed(['DELETE']);
+// Allow DELETE and POST
+if (!in_array($_SERVER['REQUEST_METHOD'], ['DELETE', 'POST'])) {
+    ApiResponse::methodNotAllowed(['DELETE', 'POST']);
 }
 
 try {
@@ -34,8 +34,9 @@ try {
     // Require authentication and inventory.products.delete permission
     $currentUser = $authMiddleware->requirePermission('inventory.products.delete');
     
-    // Get product ID from query
-    $productId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+    // Get product ID from query or body
+    $input = json_decode(file_get_contents('php://input'), true) ?: ($_POST ?? []);
+    $productId = isset($_GET['id']) ? (int)$_GET['id'] : (isset($input['id']) ? (int)$input['id'] : null);
     
     if (!$productId) {
         ApiResponse::validationError(['id' => 'Product ID is required']);

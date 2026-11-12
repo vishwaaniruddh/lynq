@@ -240,7 +240,11 @@ class BulkInventoryService {
                     $additionalData['notes'] = trim($row['notes']);
                 }
                 if (isset($row['is_repairable']) && $row['is_repairable'] !== '') {
-                    $additionalData['is_repairable'] = (int)$row['is_repairable'];
+                    $isRepairable = (int)$row['is_repairable'];
+                    if ((int)$product['is_repairable'] !== $isRepairable) {
+                        $this->productRepository->update($product['id'], ['is_repairable' => $isRepairable]);
+                        $product['is_repairable'] = $isRepairable;
+                    }
                 }
                 
                 if ($product['is_serializable']) {

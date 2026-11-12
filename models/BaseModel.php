@@ -25,6 +25,13 @@ abstract class BaseModel {
     }
     
     /**
+     * Alias for find() by ID
+     */
+    public function findById($id) {
+        return $this->find($id);
+    }
+    
+    /**
      * Find all records
      */
     public function findAll($conditions = [], $orderBy = null, $limit = null) {

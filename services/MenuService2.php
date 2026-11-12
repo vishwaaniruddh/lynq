@@ -60,6 +60,7 @@ class MenuService2 {
                     ['id' => 'masters_banks', 'label' => 'Bank Master', 'icon' => 'fa-university', 'url' => '/masters/banks.php', 'permission' => 'masters.banks.view', 'adv_only' => true],
                     ['id' => 'masters_customers', 'label' => 'Customer Master', 'icon' => 'fa-users', 'url' => '/masters/customers.php', 'permission' => 'masters.customers.view', 'adv_only' => true],
                     ['id' => 'masters_projects', 'label' => 'Projects Master', 'icon' => 'fa-project-diagram', 'url' => '/masters/projects.php', 'permission' => 'masters.projects.view', 'adv_only' => true],
+                    ['id' => 'masters_product_categories', 'label' => 'Product Categories', 'icon' => 'fa-tags', 'url' => '/masters/product_categories.php', 'permission' => 'masters.product_categories.view', 'adv_only' => true],
                     ['id' => 'masters_forms', 'label' => 'Forms Master', 'icon' => 'fa-wpforms', 'url' => '/masters/forms.php', 'permission' => 'masters.forms.view', 'adv_only' => true],
                     ['id' => 'masters_couriers', 'label' => 'Courier Master', 'icon' => 'fa-truck', 'url' => '/masters/couriers.php', 'permission' => 'masters.couriers.view', 'adv_only' => true],
                     [
@@ -178,8 +179,8 @@ class MenuService2 {
                     ['id' => 'inventory_dashboard_contractor', 'label' => 'Dashboard', 'icon' => 'fa-tachometer-alt', 'url' => '/inventory/dashboard_contractor.php', 'permission' => 'inventory.dashboard.contractor', 'adv_only' => false, 'contractor_only' => true],
                     ['id' => 'inventory_dashboard_engineer', 'label' => 'Dashboard', 'icon' => 'fa-tachometer-alt', 'url' => '/inventory/dashboard_engineer.php', 'permission' => 'inventory.dashboard.engineer', 'adv_only' => false, 'engineer_only' => true],
                     ['id' => 'inventory_warehouses', 'label' => 'Warehouses (Stock Hubs)', 'icon' => 'fa-warehouse', 'url' => '/inventory/warehouses.php', 'permission' => 'inventory.warehouses.view', 'adv_only' => false],
-                    ['id' => 'inventory_product_categories', 'label' => 'Product Categories', 'icon' => 'fa-folder', 'url' => '/masters/product_categories.php', 'permission' => 'masters.product_categories.view', 'adv_only' => true],
                     ['id' => 'inventory_products', 'label' => 'Products Catalog', 'icon' => 'fa-box', 'url' => '/inventory/products.php', 'permission' => 'inventory.products.view', 'adv_only' => false],
+                    ['id' => 'inventory_product_categories', 'label' => 'Product Categories', 'icon' => 'fa-tags', 'url' => '/masters/product_categories.php', 'permission' => 'masters.product_categories.view', 'adv_only' => true],
                     ['id' => 'inventory_stock', 'label' => 'Stock Entry', 'icon' => 'fa-plus-circle', 'url' => '/inventory/stock.php', 'permission' => 'inventory.stock.create', 'adv_only' => true],
                     ['id' => 'inventory_dispatch', 'label' => 'Dispatch Logistics', 'icon' => 'fa-truck', 'url' => '/inventory/dispatch.php', 'permission' => 'inventory.dispatch.view', 'adv_only' => false],
                     ['id' => 'inventory_transfers', 'label' => 'Stock Transfers', 'icon' => 'fa-exchange-alt', 'url' => '/inventory/transfers.php', 'permission' => 'inventory.transfers.view', 'adv_only' => true],
@@ -406,7 +407,8 @@ class MenuService2 {
             strpos($menuItem['permission'], 'inventory.') === 0 ||
             strpos($menuItem['permission'], 'ip_configuration.') === 0 ||
             strpos($menuItem['permission'], 'feasibility.') === 0 ||
-            strpos($menuItem['permission'], 'installation.') === 0
+            strpos($menuItem['permission'], 'installation.') === 0 ||
+            strpos($menuItem['permission'], 'masters.') === 0
         )) {
             return true;
         }

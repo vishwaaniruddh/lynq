@@ -1885,7 +1885,14 @@ async function acknowledgeDispatch() {
     } catch (error) { showToast('Failed to acknowledge dispatch', 'error'); }
 }
 
-function exportDispatches() { window.open(`../api/inventory/export/index.php?type=dispatches`, '_blank'); }
+function exportDispatches() {
+    const a = document.createElement('a');
+    a.href = `../api/inventory/export/index.php?type=dispatches&format=xlsx&download=true`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
 
 // Utilities
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'; }

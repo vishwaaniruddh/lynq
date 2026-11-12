@@ -864,22 +864,22 @@ async function processTransfer() {
 }
 
 // Export transfers
-async function exportTransfers() {
+function exportTransfers() {
     try {
-        const params = new URLSearchParams({ limit: 1000 });
+        const params = new URLSearchParams();
         if (state.filters.from_warehouse_id) params.append('from_warehouse_id', state.filters.from_warehouse_id);
         if (state.filters.to_warehouse_id) params.append('to_warehouse_id', state.filters.to_warehouse_id);
         if (state.filters.status) params.append('status', state.filters.status);
+        params.append('format', 'xlsx');
+        params.append('download', 'true');
         
-        const response = await fetch(`${API_URL}/index.php?${params}`, { credentials: 'include' });
-        const data = await response.json();
-        
-        if (data.success) {
-            downloadTransferCSV(data.data.transfers, 'transfers_export.csv');
-            showSuccess('Transfers exported successfully');
-        } else {
-            showError(data.error?.message || 'Failed to export transfers');
-        }
+        const url = `../api/inventory/export/index.php?type=transfers&${params}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     } catch (error) {
         console.error('Error exporting transfers:', error);
         showError('Failed to export transfers');

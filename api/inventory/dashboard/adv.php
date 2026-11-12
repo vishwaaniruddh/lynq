@@ -171,7 +171,7 @@ try {
  */
 function getStockSummary($db) {
     $sql = "SELECT 
-                COUNT(DISTINCT s.product_id) as total_products,
+                (SELECT COUNT(*) FROM products WHERE status = 'active') as total_products,
                 COALESCE(SUM(s.quantity), 0) as total_quantity,
                 COALESCE(SUM(s.reserved_quantity), 0) as reserved_quantity,
                 COALESCE(SUM(s.quantity - s.reserved_quantity), 0) as available_quantity

@@ -12,3 +12,17 @@
 [2026-01-01 07:07:34] [INFO] Removed 0 expired blacklist entry(ies)
 [2026-01-01 07:07:34] [INFO] Total entries cleaned up: 0
 [2026-01-01 07:07:34] [INFO] JWT token cleanup cron job completed successfully
+[2026-10-06 16:41:22] [INFO] Starting JWT token cleanup cron job
+[2026-10-06 16:41:22] [INFO] Cleaning up expired refresh tokens...
+[2026-10-06 16:41:22] [INFO] Removed 384 expired refresh token(s)
+[2026-10-06 16:41:22] [INFO] Cleaning up expired blacklist entries...
+[2026-10-06 16:41:22] [INFO] Removed 7 expired blacklist entry(ies)
+[2026-10-06 16:41:22] [INFO] Total entries cleaned up: 391
+[2026-10-06 16:41:22] [INFO] JWT token cleanup cron job completed successfully
+[2026-10-28 21:00:08] [INFO] Starting JWT token cleanup cron job
+[2026-10-28 21:00:08] [INFO] Cleaning up expired refresh tokens...
+[2026-10-28 21:00:09] [INFO] Removed 571 expired refresh token(s)
+[2026-10-28 21:00:09] [INFO] Cleaning up expired blacklist entries...
+[2026-10-28 21:00:09] [INFO] Removed 6 expired blacklist entry(ies)
+[2026-10-28 21:00:09] [INFO] Total entries cleaned up: 577
+[2026-10-28 21:00:09] [INFO] JWT token cleanup cron job completed successfully

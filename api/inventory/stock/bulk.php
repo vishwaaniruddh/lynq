@@ -63,7 +63,8 @@ try {
     // Limit bulk upload size
     $maxRows = 1000;
     if (count($input['rows']) > $maxRows) {
-        ApiResponse::validationError(['rows' => "Maximum $maxRows rows allowed per upload"]);
+        $providedRows = count($input['rows']);
+        ApiResponse::validationError(['rows' => "Maximum $maxRows rows allowed per upload. File contains $providedRows rows."]);
     }
     
     $validateOnly = isset($input['validate_only']) && $input['validate_only'] === true;
@@ -138,9 +139,13 @@ try {
     // Generate error report if there were errors
     $errorReportPath = null;
     if ($result->errorCount > 0) {
-        $reportResult = $bulkService->generateErrorReport($result, 'bulk_stock_errors_' . date('Ymd_His'));
-        if ($reportResult['success'] && !empty($reportResult['path'])) {
-            $errorReportPath = $reportResult['path'];
+        try {
+            $reportResult = $bulkService->generateErrorReport($result, 'bulk_stock_errors_' . date('Ymd_His'));
+            if (!empty($reportResult['success']) && !empty($reportResult['path'])) {
+                $errorReportPath = $reportResult['path'];
+            }
+        } catch (\Throwable $e) {
+            error_log("Failed to generate error report: " . $e->getMessage());
         }
     }
     

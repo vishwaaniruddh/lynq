@@ -28,6 +28,9 @@ class InventoryAuditService {
     const ACTION_LOST = 'lost';
     const ACTION_ACKNOWLEDGE = 'acknowledge';
     const ACTION_EXPORT = 'export';
+    const ACTION_PRODUCT_CREATE = 'product_created';
+    const ACTION_PRODUCT_UPDATE = 'product_updated';
+    const ACTION_PRODUCT_DELETE = 'product_deleted';
     
     // File Manager action type constants
     const ACTION_FILE_CREATE = 'file_create';
@@ -50,6 +53,7 @@ class InventoryAuditService {
     const ENTITY_REPAIR = 'repair';
     const ENTITY_INVENTORY = 'inventory';
     const ENTITY_FILE = 'file';
+    const ENTITY_PRODUCT = 'product';
     
     // Location type constants
     const LOCATION_WAREHOUSE = 'warehouse';
@@ -528,33 +532,7 @@ class InventoryAuditService {
      * @return bool True if valid
      */
     private function isValidActionType(string $actionType): bool {
-        $validTypes = [
-            // Inventory action types
-            self::ACTION_STOCK_ENTRY,
-            self::ACTION_DISPATCH,
-            self::ACTION_TRANSFER,
-            self::ACTION_STATUS_CHANGE,
-            self::ACTION_REPAIR,
-            self::ACTION_RETURN,
-            self::ACTION_SCRAP,
-            self::ACTION_LOST,
-            self::ACTION_ACKNOWLEDGE,
-            self::ACTION_EXPORT,
-            // File Manager action types
-            self::ACTION_FILE_CREATE,
-            self::ACTION_FILE_READ,
-            self::ACTION_FILE_WRITE,
-            self::ACTION_FILE_DELETE,
-            self::ACTION_FILE_RENAME,
-            self::ACTION_FILE_UPLOAD,
-            self::ACTION_FILE_DOWNLOAD,
-            self::ACTION_FILE_SEARCH,
-            self::ACTION_DIR_CREATE,
-            self::ACTION_DIR_DELETE,
-            self::ACTION_DIR_LIST
-        ];
-        
-        return in_array($actionType, $validTypes);
+        return in_array($actionType, self::getActionTypes());
     }
     
     /**
@@ -564,17 +542,7 @@ class InventoryAuditService {
      * @return bool True if valid
      */
     private function isValidEntityType(string $entityType): bool {
-        $validTypes = [
-            self::ENTITY_ASSET,
-            self::ENTITY_STOCK,
-            self::ENTITY_DISPATCH,
-            self::ENTITY_TRANSFER,
-            self::ENTITY_REPAIR,
-            self::ENTITY_INVENTORY,
-            self::ENTITY_FILE
-        ];
-        
-        return in_array($entityType, $validTypes);
+        return in_array($entityType, self::getEntityTypes());
     }
     
     /**
@@ -595,6 +563,9 @@ class InventoryAuditService {
             self::ACTION_LOST,
             self::ACTION_ACKNOWLEDGE,
             self::ACTION_EXPORT,
+            self::ACTION_PRODUCT_CREATE,
+            self::ACTION_PRODUCT_UPDATE,
+            self::ACTION_PRODUCT_DELETE,
             // File Manager action types
             self::ACTION_FILE_CREATE,
             self::ACTION_FILE_READ,
@@ -623,7 +594,8 @@ class InventoryAuditService {
             self::ENTITY_TRANSFER,
             self::ENTITY_REPAIR,
             self::ENTITY_INVENTORY,
-            self::ENTITY_FILE
+            self::ENTITY_FILE,
+            self::ENTITY_PRODUCT
         ];
     }
     

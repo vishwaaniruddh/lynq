@@ -90,6 +90,22 @@ try {
     // Re-index array after filtering
     $warehouses = array_values($warehouses);
     
+    // Apply sorting
+    $sortField = $_GET['sort'] ?? 'id';
+    $sortOrder = strtolower($_GET['order'] ?? 'desc');
+    if ($sortField && in_array($sortField, ['id', 'name', 'status', 'company_name', 'location'])) {
+        usort($warehouses, function($a, $b) use ($sortField, $sortOrder) {
+            $valA = $a[$sortField] ?? '';
+            $valB = $b[$sortField] ?? '';
+            if ($sortField === 'id') {
+                $cmp = ((int)$valA <=> (int)$valB);
+            } else {
+                $cmp = strcasecmp((string)$valA, (string)$valB);
+            }
+            return $sortOrder === 'desc' ? -$cmp : $cmp;
+        });
+    }
+    
     // Get total count for pagination
     $totalCount = count($warehouses);
     

@@ -92,7 +92,7 @@ class FeasibilityService {
         }
         
         // Validate required fields (Requirement 4.3)
-        $validation = $this->validateFeasibilityData($data);
+        $validation = $this->validateFeasibilityData($data, $assignmentId);
         if (!$validation['isValid']) {
             return [
                 'success' => false,
@@ -216,11 +216,36 @@ class FeasibilityService {
      * 
      * Requirements: 4.3
      */
-    public function validateFeasibilityData(array $data): array {
+    public function validateFeasibilityData(array $data, ?int $assignmentId = null): array {
         $errors = [];
         
+        // Resolve required fields: If assignment has a project custom form, use its required fields
+        $requiredFields = $this->requiredFields;
+        if (!$assignmentId && !empty($data['assignment_id'])) {
+            $assignmentId = (int)$data['assignment_id'];
+        }
+        
+        if ($assignmentId) {
+            $assignment = $this->assignmentRepository->findById($assignmentId);
+            if ($assignment && !empty($assignment['site_id'])) {
+                $site = $this->siteRepository->findById($assignment['site_id']);
+                if ($site && !empty($site['project_id'])) {
+                    $customFormModel = new CustomForm();
+                    $customForm = $customFormModel->findFormForProject('feasibility', (int)$site['project_id']);
+                    if (!empty($customForm['fields'])) {
+                        $requiredFields = [];
+                        foreach ($customForm['fields'] as $f) {
+                            if (!empty($f['is_required']) && ($f['field_type'] ?? '') !== 'file') {
+                                $requiredFields[] = $f['field_key'];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         // Check required fields
-        foreach ($this->requiredFields as $field) {
+        foreach ($requiredFields as $field) {
             if (!isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
                 $errors[] = [
                     'field' => $field,

@@ -411,11 +411,23 @@ class AssetRepository extends BaseRepository {
      * Search assets with filters
      */
     public function search($filters = []) {
-        $sql = "SELECT a.*, p.name as product_name, w.name as warehouse_name, sw.name as source_warehouse_name
+        $sql = "SELECT a.*, 
+                       p.name as product_name, 
+                       w.name as warehouse_name, 
+                       sw.name as source_warehouse_name,
+                       CASE 
+                           WHEN a.current_holder_type = 'warehouse' THEN hw.name
+                           WHEN a.current_holder_type = 'company' THEN hc.name
+                           WHEN a.current_holder_type = 'user' THEN CONCAT(hu.first_name, ' ', hu.last_name)
+                           ELSE w.name
+                       END as current_holder_name
                 FROM `{$this->table}` a
                 LEFT JOIN products p ON a.product_id = p.id
                 LEFT JOIN warehouses w ON a.warehouse_id = w.id
                 LEFT JOIN warehouses sw ON a.source_warehouse_id = sw.id
+                LEFT JOIN warehouses hw ON a.current_holder_type = 'warehouse' AND a.current_holder_id = hw.id
+                LEFT JOIN companies hc ON a.current_holder_type = 'company' AND a.current_holder_id = hc.id
+                LEFT JOIN users hu ON a.current_holder_type = 'user' AND a.current_holder_id = hu.id
                 WHERE 1=1";
         $params = [];
         $types = '';

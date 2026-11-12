@@ -1608,17 +1608,17 @@ class PWAManager {
      */
     async preloadCriticalResources() {
         const criticalResources = [
-            '/assets/css/tailwind.css',
-            '/assets/js/app.js',
-            '/dashboard.php'
+            { url: '/assets/css/offline.css', as: 'style', rel: 'preload' },
+            { url: '/assets/js/app.js', as: 'script', rel: 'preload' },
+            { url: '/dashboard.php', rel: 'prefetch' }
         ];
 
-        const preloadPromises = criticalResources.map(url => {
+        const preloadPromises = criticalResources.map(res => {
             return new Promise((resolve) => {
                 const link = document.createElement('link');
-                link.rel = 'preload';
-                link.as = this.getResourceType(url);
-                link.href = url;
+                link.rel = res.rel || 'preload';
+                if (res.as) link.as = res.as;
+                link.href = res.url;
                 link.onload = resolve;
                 link.onerror = resolve; // Don't fail on preload errors
                 document.head.appendChild(link);
@@ -1635,7 +1635,6 @@ class PWAManager {
     getResourceType(url) {
         if (url.endsWith('.css')) return 'style';
         if (url.endsWith('.js')) return 'script';
-        if (url.endsWith('.php') || url.endsWith('.html')) return 'document';
         return 'fetch';
     }
 

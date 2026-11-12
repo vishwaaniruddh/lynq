@@ -116,8 +116,29 @@ try {
         'page' => $page
     ]);
     
+    // Calculate summary counts
+    $summary = [
+        'pending' => 0,
+        'in_progress' => 0,
+        'completed' => 0,
+        'overdue' => 0
+    ];
+    $allRepairsForSummary = (empty($filters) && !$overdue) ? $repairs : $repairService->getRepairHistory([]);
+    foreach ($allRepairsForSummary as $r) {
+        $st = $r['status'] ?? '';
+        if (isset($summary[$st])) {
+            $summary[$st]++;
+        }
+        $isItemOverdue = !empty($r['is_overdue']) || 
+            (!empty($r['expected_return_date']) && strtotime($r['expected_return_date']) < time() && !in_array($st, ['completed', 'cancelled']));
+        if ($isItemOverdue) {
+            $summary['overdue']++;
+        }
+    }
+
     ApiResponse::success([
         'repairs' => $paginatedRepairs,
+        'summary' => $summary,
         'pagination' => [
             'page' => $page,
             'limit' => $limit,

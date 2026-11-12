@@ -51,6 +51,9 @@ ob_start();
             <p class="text-sm text-gray-500">Manage inventory products and materials</p>
         </div>
         <div class="flex items-center gap-3">
+            <a href="../masters/product_categories.php" class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition flex items-center text-sm font-medium">
+                <i class="fas fa-tags mr-2"></i>Product Categories
+            </a>
             <?php if ($canCreate): ?>
             <button onclick="openCreateModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition flex items-center">
                 <i class="fas fa-plus mr-2"></i>Add Product
@@ -102,8 +105,11 @@ ob_start();
         <table id="products-table" class="w-full">
             <thead class="bg-gray-50/80">
                 <tr>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        #
+                    </th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" data-sort="id">
-                        # <i class="fas fa-sort ml-1"></i>
+                        Product ID <i class="fas fa-sort ml-1"></i>
                     </th>
                     <th class="px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" data-sort="name">
                         Product <i class="fas fa-sort ml-1"></i>
@@ -117,7 +123,7 @@ ob_start();
             </thead>
             <tbody id="products-tbody" class="divide-y">
                 <tr>
-                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">Loading...</td>
+                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">Loading...</td>
                 </tr>
             </tbody>
         </table>
@@ -153,7 +159,12 @@ ob_start();
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="product-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="product-category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <a href="../masters/product_categories.php" target="_blank" class="text-xs text-primary hover:underline flex items-center">
+                                    <i class="fas fa-plus mr-1"></i>New Category
+                                </a>
+                            </div>
                             <select id="product-category" name="category_id"
                                 class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary">
                                 <option value="">Select Category</option>
@@ -397,7 +408,7 @@ function renderTable() {
     if (state.products.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
                     <i class="fas fa-box text-4xl mb-3 text-gray-300"></i>
                     <p>No products found</p>
                 </td>
@@ -411,6 +422,9 @@ function renderTable() {
     tbody.innerHTML = state.products.map((product, index) => `
         <tr class="hover:bg-gray-50/50 transition-colors">
             <td class="px-4 py-2.5 text-xs text-gray-500">#${startIndex + index + 1}</td>
+            <td class="px-4 py-2.5 text-xs">
+                <span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-mono font-semibold text-[11px] border border-slate-200">${product.id}</span>
+            </td>
             <td class="px-4 py-2.5">
                 <div class="flex items-center">
                     <div class="w-7 h-7 ${product.is_serializable ? 'bg-gradient-to-br from-purple-50 to-purple-100' : 'bg-gradient-to-br from-blue-50 to-blue-100'} rounded-lg flex items-center justify-center mr-2.5">
@@ -583,7 +597,7 @@ async function saveProduct(event) {
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
     
     try {
-        const endpoint = id ? `${API_URL}/update.php` : `${API_URL}/create.php`;
+        const endpoint = id ? `${API_URL}/update.php?id=${id}` : `${API_URL}/create.php`;
         const payload = {
             name, unit_of_measure: unitOfMeasure, inventory_type: inventoryType,
             low_stock_threshold: lowStockThreshold, is_serializable: isSerializable,

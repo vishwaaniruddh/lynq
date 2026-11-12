@@ -45,11 +45,15 @@ function getMenuIconColor($itemId) {
         'masters_companies' => 'text-green-400',
         'masters_banks' => 'text-indigo-400',
         'masters_customers' => 'text-blue-400',
+        'masters_projects' => 'text-indigo-400',
+        'masters_product_categories' => 'text-amber-400',
         'masters_couriers' => 'text-orange-400',
+        'masters_forms' => 'text-teal-400',
         'masters_countries' => 'text-green-400',
         'masters_states' => 'text-teal-400',
         'masters_zones' => 'text-purple-400',
         'masters_cities' => 'text-cyan-400',
+        'masters_lhos' => 'text-blue-400',
         // Location Master
         'location_master' => 'text-pink-400',
         // Legacy master data (for backward compatibility)
@@ -95,12 +99,15 @@ function getMenuIconColor($itemId) {
         // Inventory
         'inventory_warehouses' => 'text-amber-400',
         'inventory_products' => 'text-blue-400',
+        'inventory_product_categories' => 'text-amber-400',
         'inventory_stock' => 'text-green-400',
         'inventory_dispatch' => 'text-orange-400',
         'inventory_transfers' => 'text-purple-400',
         'inventory_assets' => 'text-indigo-400',
         'inventory_item_history' => 'text-violet-400',
         'inventory_repairs' => 'text-red-400',
+        'inventory_material_masters' => 'text-teal-400',
+        'inventory_material_requests' => 'text-indigo-400',
         // System
         'system_admin' => 'text-red-400',
         'system_backup' => 'text-teal-400',
