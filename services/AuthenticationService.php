@@ -62,11 +62,13 @@ class AuthenticationService {
             // Check if account/IP is locked via AccountLockoutService
             $lockStatus = $this->accountLockoutService->isLocked($identifier, $ipAddress);
             if ($lockStatus['locked']) {
-                $this->securityEventService->logLoginFailed($identifier, $ipAddress, 'ACCOUNT_LOCKED');
+                $err = $lockStatus['error'] ?? 'ACCOUNT_LOCKED';
+                $msg = $lockStatus['message'] ?? 'Account is temporarily locked. Please try again later.';
+                $this->securityEventService->logLoginFailed($identifier, $ipAddress, $err);
                 return [
                     'success' => false,
-                    'error' => 'ACCOUNT_LOCKED',
-                    'message' => 'Account is temporarily locked. Please try again later.',
+                    'error' => $err,
+                    'message' => $msg,
                     'lockout_until' => $lockStatus['lockout_until'] ?? null
                 ];
             }
