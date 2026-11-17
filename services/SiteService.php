@@ -842,16 +842,14 @@ class SiteService {
     /**
      * Helper to format site records to include LHO emails in a structured email object.
      */
+    /**
+     * Helper to format site records to include full email settings, IP info,
+     * feasibility completion status, installation completion status, and location resolution.
+     */
     private function formatSiteEmails(?array $site): ?array {
         if (!$site) {
             return null;
         }
-        $site['email'] = [
-            'to' => $site['lho_to_emails'] ?? null,
-            'cc' => $site['lho_cc_emails'] ?? null
-        ];
-        unset($site['lho_to_emails']);
-        unset($site['lho_cc_emails']);
 
         // Auto-derive missing city, state, or zone from address/location
         if (empty($site['city']) || empty($site['state']) || empty($site['zone'])) {
@@ -873,6 +871,102 @@ class SiteService {
                 $site['zone'] = LocationParser::getZoneForState($site['state']) ?: 'North';
             }
         }
+
+        // 1. Resolve Effective TO and CC Email Settings (Hierarchy: Site > City > State > Zone)
+        require_once __DIR__ . '/../models/SiteEmailSetting.php';
+        static $emailSettingModel = null;
+        if ($emailSettingModel === null) {
+            $emailSettingModel = new SiteEmailSetting();
+        }
+
+        $toEmails = [];
+        $ccEmails = [];
+        $primaryLevel = null;
+        $emailLevels = [];
+
+        try {
+            $siteIdentifier = $site['id'] ?? ($site['site_name'] ?? null);
+            if ($siteIdentifier) {
+                $emailResolution = $emailSettingModel->getEffectiveEmailsForSite($siteIdentifier);
+                if (!empty($emailResolution['found'])) {
+                    $eff = $emailResolution['effective_recipients'] ?? [];
+                    $toEmails = $eff['to'] ?? [];
+                    $ccEmails = $eff['cc'] ?? [];
+                    $primaryLevel = $emailResolution['highest_priority_level'] ?? null;
+                    $emailLevels = $emailResolution['levels'] ?? [];
+                }
+            }
+        } catch (Exception $e) {}
+
+        // Fallback to LHO emails if no email settings configured
+        if (empty($toEmails) && !empty($site['lho_to_emails'])) {
+            $toEmails = SiteEmailSetting::parseEmails($site['lho_to_emails']);
+        }
+        if (empty($ccEmails) && !empty($site['lho_cc_emails'])) {
+            $ccEmails = SiteEmailSetting::parseEmails($site['lho_cc_emails']);
+        }
+
+        unset($site['lho_to_emails']);
+        unset($site['lho_cc_emails']);
+
+        $site['email'] = [
+            'to' => $toEmails,
+            'cc' => $ccEmails,
+            'to_string' => implode(', ', $toEmails),
+            'cc_string' => implode(', ', $ccEmails),
+            'primary_active_level' => $primaryLevel,
+            'weight_hierarchy' => 'individual (1) > city (2) > state (3) > zone (4)',
+            'levels' => $emailLevels
+        ];
+        $site['to_emails'] = $toEmails;
+        $site['cc_emails'] = $ccEmails;
+        $site['to_emails_string'] = implode(', ', $toEmails);
+        $site['cc_emails_string'] = implode(', ', $ccEmails);
+
+        // 2. IP Details
+        $hasIp = !empty($site['router_ip']) || !empty($site['network_ip']) || !empty($site['site_ip']) || !empty($site['router_serial_number']);
+        $site['ip_details'] = [
+            'configured' => $hasIp,
+            'status' => $hasIp ? 'configured' : 'not_configured',
+            'router_serial_number' => $site['router_serial_number'] ?? null,
+            'router_ip' => $site['router_ip'] ?? null,
+            'network_ip' => $site['network_ip'] ?? null,
+            'site_ip' => $site['site_ip'] ?? null,
+            'subnet_mask' => $site['subnet_mask'] ?? null
+        ];
+
+        // 3. Feasibility Done or Not
+        $feasApproval = strtolower(trim($site['feasibility_approval_status'] ?? ''));
+        $feasStatus = strtolower(trim($site['feasibility_status'] ?? ''));
+        $isFeasDone = in_array($feasApproval, ['adv_approved', 'approved', 'completed'], true) 
+                      || in_array($feasStatus, ['completed', 'done', 'approved'], true)
+                      || (!empty($site['feasibility_check_id']) && $feasApproval === 'adv_approved');
+
+        $site['feasibility'] = [
+            'is_done' => $isFeasDone,
+            'status' => $site['feasibility_approval_status'] ?: ($site['feasibility_status'] ?: 'not_done'),
+            'status_label' => $isFeasDone ? 'Done' : (!empty($site['feasibility_check_id']) ? 'In Review' : (!empty($site['contractor_id']) ? 'Delegated' : 'Not Started')),
+            'check_id' => !empty($site['feasibility_check_id']) ? (int)$site['feasibility_check_id'] : null,
+            'surveyor_name' => $site['surveyor_name'] ?? null,
+            'created_at' => $site['feasibility_created_at'] ?? null
+        ];
+        $site['feasibility_done'] = $isFeasDone;
+        $site['feasibility_done_text'] = $isFeasDone ? 'Done' : 'Not Done';
+
+        // 4. Installation Done or Not
+        $instStatus = strtolower(trim($site['installation_status'] ?? ''));
+        $isInstDone = in_array($instStatus, ['completed', 'done'], true) || !empty($site['installation_completed_at']);
+
+        $site['installation'] = [
+            'is_done' => $isInstDone,
+            'status' => $site['installation_status'] ?: 'not_done',
+            'status_label' => $isInstDone ? 'Completed' : (!empty($site['installation_id']) ? 'In Progress' : (!empty($site['inst_contractor_id']) ? 'Delegated' : 'Not Started')),
+            'installation_id' => !empty($site['installation_id']) ? (int)$site['installation_id'] : null,
+            'installer_name' => $site['installer_name'] ?? null,
+            'completed_at' => $site['installation_completed_at'] ?? null
+        ];
+        $site['installation_done'] = $isInstDone;
+        $site['installation_done_text'] = $isInstDone ? 'Done' : 'Not Done';
 
         return $site;
     }
