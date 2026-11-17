@@ -1,0 +1,9 @@
+# Block all HTTP web access to cron scripts
+<IfModule authz_core_module>
+    Require all denied
+</IfModule>
+<IfModule !authz_core_module>
+    Order Deny,Allow
+    Deny from all
+</IfModule>
+

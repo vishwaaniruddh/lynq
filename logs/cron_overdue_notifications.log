@@ -10,3 +10,9 @@
 [2026-10-28 21:00:08] [INFO] Cleaning up old notifications
 [2026-10-28 21:00:08] [INFO] Cleaned up 1 old notifications
 [2026-10-28 21:00:08] [INFO] Overdue notifications cron job completed successfully
+[2026-11-13 19:46:49] [INFO] Starting overdue notifications cron job
+[2026-11-13 19:46:49] [INFO] Using overdue threshold: 7 days
+[2026-11-13 19:46:49] [INFO] Overdue notifications sent: 0 of 0 total overdue items
+[2026-11-13 19:46:49] [INFO] Cleaning up old notifications
+[2026-11-13 19:46:49] [INFO] Cleaned up 0 old notifications
+[2026-11-13 19:46:49] [INFO] Overdue notifications cron job completed successfully

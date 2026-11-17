@@ -11,7 +11,7 @@ class PWAManager {
         this.isOnline = navigator.onLine;
         this.updateAvailable = false;
         this.offlineActionQueue = [];
-        
+
         this.init();
     }
 
@@ -20,35 +20,35 @@ class PWAManager {
      */
     async init() {
         console.log('[PWA] Initializing PWA Manager...');
-        
+
         // Track PWA initialization
         this.trackAnalyticsEvent('pwa_manager_init', {
             userAgent: navigator.userAgent,
             standalone: window.matchMedia('(display-mode: standalone)').matches,
             serviceWorkerSupported: 'serviceWorker' in navigator
         });
-        
+
         // Load offline queue from storage
         this.loadOfflineQueue();
-        
+
         // Register service worker
         await this.registerServiceWorker();
-        
+
         // Set up event listeners
         this.setupEventListeners();
-        
+
         // Initialize offline state detection
         this.initOfflineDetection();
-        
+
         // Set up install prompt handling
         this.setupInstallPrompt();
-        
+
         // Check for updates periodically
         this.setupUpdateChecking();
-        
+
         // Enhanced update lifecycle management
         await this.manageUpdateLifecycle();
-        
+
         console.log('[PWA] PWA Manager initialized successfully');
     }
 
@@ -79,7 +79,7 @@ class PWAManager {
      */
     handleServiceWorkerUpdate(registration) {
         const newWorker = registration.installing;
-        
+
         newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
@@ -100,7 +100,7 @@ class PWAManager {
     showUpdateNotification() {
         const updateBanner = this.createUpdateBanner();
         document.body.appendChild(updateBanner);
-        
+
         // Auto-hide after 10 seconds if user doesn't interact
         setTimeout(() => {
             if (updateBanner.parentNode) {
@@ -156,7 +156,7 @@ class PWAManager {
 
         // Tell the waiting service worker to skip waiting
         this.serviceWorker.waiting.postMessage({ type: 'SKIP_WAITING' });
-        
+
         // Reload the page to use the new service worker
         window.location.reload();
     }
@@ -168,12 +168,12 @@ class PWAManager {
         // Online/offline events
         window.addEventListener('online', () => this.handleOnlineStatusChange(true));
         window.addEventListener('offline', () => this.handleOnlineStatusChange(false));
-        
+
         // Before install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
-            
+
             // Only show install button if user hasn't dismissed it too many times
             if (this.shouldShowInstallPrompt()) {
                 console.log('[PWA] Install prompt available and eligible');
@@ -188,13 +188,13 @@ class PWAManager {
             console.log('[PWA] App installed successfully');
             this.hideInstallButton();
             this.deferredPrompt = null;
-            
+
             // Track successful installation
             this.trackInstallationSuccess();
-            
+
             // Show success message
-            this.showUserMessage('Installation Complete', 
-                'The app has been installed successfully! You can now access it from your device\'s home screen.', 
+            this.showUserMessage('Installation Complete',
+                'The app has been installed successfully! You can now access it from your device\'s home screen.',
                 'success');
         });
 
@@ -211,12 +211,12 @@ class PWAManager {
      */
     handleOnlineStatusChange(isOnline) {
         this.isOnline = isOnline;
-        
+
         if (isOnline) {
             console.log('[PWA] Connection restored');
             this.hideOfflineIndicator();
             this.syncOfflineActions();
-            
+
             // Track analytics event
             this.trackAnalyticsEvent('connection_restored', {
                 queueLength: this.offlineActionQueue.length,
@@ -225,7 +225,7 @@ class PWAManager {
         } else {
             console.log('[PWA] Connection lost');
             this.showOfflineIndicator();
-            
+
             // Track analytics event
             this.trackAnalyticsEvent('connection_lost', {
                 timestamp: Date.now()
@@ -257,16 +257,16 @@ class PWAManager {
     setupNetworkMonitoring() {
         // Override fetch to monitor network requests
         const originalFetch = window.fetch;
-        
+
         window.fetch = async (...args) => {
             try {
                 const response = await originalFetch(...args);
-                
+
                 // If we get a response, we're likely online
                 if (!this.isOnline && response.ok) {
                     this.handleOnlineStatusChange(true);
                 }
-                
+
                 return response;
             } catch (error) {
                 // Network error might indicate offline status
@@ -283,7 +283,7 @@ class PWAManager {
      */
     showOfflineIndicator() {
         let indicator = document.getElementById('pwa-offline-indicator');
-        
+
         if (!indicator) {
             indicator = document.createElement('div');
             indicator.id = 'pwa-offline-indicator';
@@ -296,7 +296,7 @@ class PWAManager {
             `;
             document.body.appendChild(indicator);
         }
-        
+
         indicator.style.display = 'block';
     }
 
@@ -335,7 +335,7 @@ class PWAManager {
             existingBtn.addEventListener('click', () => this.promptInstall());
             return;
         }
-        
+
         // Create fallback install button if header button doesn't exist
         const installBtn = document.createElement('button');
         installBtn.id = 'pwa-install-btn-fallback';
@@ -346,7 +346,7 @@ class PWAManager {
                 <span>Install App</span>
             </div>
         `;
-        
+
         installBtn.addEventListener('click', () => this.promptInstall());
         document.body.appendChild(installBtn);
     }
@@ -361,7 +361,7 @@ class PWAManager {
             headerBtn.style.display = 'flex';
             return;
         }
-        
+
         // Fallback to floating button
         const fallbackBtn = document.getElementById('pwa-install-btn-fallback');
         if (fallbackBtn) {
@@ -378,7 +378,7 @@ class PWAManager {
         if (headerBtn) {
             headerBtn.style.display = 'none';
         }
-        
+
         // Hide fallback button
         const fallbackBtn = document.getElementById('pwa-install-btn-fallback');
         if (fallbackBtn) {
@@ -399,12 +399,12 @@ class PWAManager {
         try {
             // Show the install prompt
             this.deferredPrompt.prompt();
-            
+
             // Wait for user response
             const { outcome } = await this.deferredPrompt.userChoice;
-            
+
             console.log('[PWA] Install prompt outcome:', outcome);
-            
+
             if (outcome === 'accepted') {
                 console.log('[PWA] User accepted the install prompt');
                 this.trackInstallationSuccess();
@@ -413,7 +413,7 @@ class PWAManager {
                 console.log('[PWA] User dismissed the install prompt');
                 this.trackInstallationDismissal();
             }
-            
+
             // Clear the deferred prompt
             this.deferredPrompt = null;
             this.hideInstallButton();
@@ -431,7 +431,7 @@ class PWAManager {
         setInterval(() => {
             this.checkForUpdates();
         }, 30 * 60 * 1000);
-        
+
         // Also check when page becomes visible
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
@@ -467,22 +467,22 @@ class PWAManager {
             maxRetries: 3,
             ...action
         };
-        
+
         this.offlineActionQueue.push(queuedAction);
         this.saveOfflineQueue();
-        
+
         console.log('[PWA] Queued offline action:', queuedAction.id);
-        
+
         // Track analytics event
         this.trackAnalyticsEvent('offline_action_queued', {
             actionType: action.method || 'unknown',
             endpoint: action.endpoint,
             queueLength: this.offlineActionQueue.length
         });
-        
+
         // Register background sync if available
         this.registerBackgroundSync();
-        
+
         // Try to sync immediately if online
         if (this.isOnline) {
             this.syncOfflineActions();
@@ -515,23 +515,23 @@ class PWAManager {
         }
 
         console.log('[PWA] Syncing offline actions...');
-        
+
         const actionsToSync = [...this.offlineActionQueue];
-        
+
         for (const action of actionsToSync) {
             try {
                 await this.processOfflineAction(action);
-                
+
                 // Remove successful action from queue
                 this.offlineActionQueue = this.offlineActionQueue.filter(a => a.id !== action.id);
                 console.log('[PWA] Synced offline action:', action.id);
-                
+
             } catch (error) {
                 console.error('[PWA] Failed to sync action:', action.id, error);
-                
+
                 // Increment retry count
                 action.retryCount++;
-                
+
                 // Remove if max retries exceeded
                 if (action.retryCount >= action.maxRetries) {
                     this.offlineActionQueue = this.offlineActionQueue.filter(a => a.id !== action.id);
@@ -539,9 +539,9 @@ class PWAManager {
                 }
             }
         }
-        
+
         this.saveOfflineQueue();
-        
+
         if (this.offlineActionQueue.length === 0) {
             console.log('[PWA] All offline actions synced successfully');
         }
@@ -600,47 +600,47 @@ class PWAManager {
      */
     handleServiceWorkerMessage(event) {
         const { data } = event;
-        
+
         if (data && data.type) {
             switch (data.type) {
                 case 'CACHE_UPDATED':
                     console.log('[PWA] Cache updated:', data.cacheName);
                     break;
-                    
+
                 case 'OFFLINE_FALLBACK':
                     console.log('[PWA] Serving offline fallback for:', data.url);
                     break;
-                    
+
                 case 'QUEUE_UPDATED':
                     console.log('[PWA] Offline queue updated, length:', data.queueLength);
                     this.updateQueueIndicators(data.queueLength);
                     break;
-                    
+
                 case 'GET_STORAGE':
                     // Handle storage request from service worker
                     this.handleStorageRequest(data, event.ports[0]);
                     break;
-                    
+
                 case 'SET_STORAGE':
                     // Handle storage set request from service worker
                     this.handleStorageSetRequest(data, event.ports[0]);
                     break;
-                    
+
                 case 'NOTIFICATION_CLICK':
                     console.log('[PWA] Notification clicked:', data.data);
                     this.handleNotificationClick(data.data);
                     break;
-                    
+
                 case 'NAVIGATE_TO':
                     console.log('[PWA] Navigate to:', data.url);
                     window.location.href = data.url;
                     break;
-                    
+
                 case 'SEND_ANALYTICS':
                     // Handle analytics data from service worker
                     this.sendAnalyticsData(data.eventType, data.data);
                     break;
-                    
+
                 default:
                     console.log('[PWA] Unknown message from service worker:', data);
             }
@@ -697,7 +697,7 @@ class PWAManager {
             queueIndicator.textContent = queueLength;
             queueIndicator.style.display = queueLength > 0 ? 'inline' : 'none';
         }
-        
+
         // Update any other queue indicators
         const queueElements = document.querySelectorAll('[data-queue-count]');
         queueElements.forEach(element => {
@@ -742,7 +742,7 @@ class PWAManager {
     showNotificationSettings() {
         const modal = this.createNotificationSettingsModal();
         document.body.appendChild(modal);
-        
+
         // Initialize current state
         this.updateNotificationSettingsUI(modal);
     }
@@ -836,7 +836,7 @@ class PWAManager {
             toggle.classList.remove('bg-blue-600');
             toggle.classList.add('bg-gray-300');
             toggleSwitch.style.transform = 'translateX(0)';
-            
+
             if (permission === 'denied') {
                 status.textContent = 'Push notifications are blocked. Please enable them in your browser settings.';
                 status.className = 'text-sm text-red-600';
@@ -983,7 +983,7 @@ class PWAManager {
 
         try {
             const subscription = await this.serviceWorker.pushManager.getSubscription();
-            
+
             if (subscription) {
                 // Unsubscribe from browser
                 await subscription.unsubscribe();
@@ -1070,8 +1070,8 @@ class PWAManager {
      * Show install unavailable message
      */
     showInstallUnavailableMessage() {
-        this.showUserMessage('App Installation', 
-            'The app is already installed or installation is not available on this device.', 
+        this.showUserMessage('App Installation',
+            'The app is already installed or installation is not available on this device.',
             'info');
     }
 
@@ -1079,8 +1079,8 @@ class PWAManager {
      * Show installation pending message
      */
     showInstallationPendingMessage() {
-        this.showUserMessage('App Installation', 
-            'Installation started! The app will be available in your device\'s app drawer shortly.', 
+        this.showUserMessage('App Installation',
+            'Installation started! The app will be available in your device\'s app drawer shortly.',
             'success');
     }
 
@@ -1088,8 +1088,8 @@ class PWAManager {
      * Show install error message
      */
     showInstallErrorMessage(error) {
-        this.showUserMessage('Installation Error', 
-            `Failed to install the app: ${error}`, 
+        this.showUserMessage('Installation Error',
+            `Failed to install the app: ${error}`,
             'error');
     }
 
@@ -1113,9 +1113,9 @@ class PWAManager {
                 </button>
             </div>
         `;
-        
+
         document.body.appendChild(toast);
-        
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (toast.parentNode) {
@@ -1157,7 +1157,7 @@ class PWAManager {
         try {
             localStorage.setItem('pwa-install-accepted', Date.now().toString());
             console.log('[PWA] Installation acceptance tracked');
-            
+
             // Track analytics event
             this.trackAnalyticsEvent('pwa_install_accepted', {
                 timestamp: Date.now(),
@@ -1178,7 +1178,7 @@ class PWAManager {
             localStorage.setItem('pwa-install-dismissals', dismissals.toString());
             localStorage.setItem('pwa-last-dismissal', Date.now().toString());
             console.log('[PWA] Installation dismissal tracked:', dismissals);
-            
+
             // Track analytics event
             this.trackAnalyticsEvent('pwa_install_dismissed', {
                 dismissalCount: dismissals,
@@ -1213,7 +1213,7 @@ class PWAManager {
 
             // Progressive backoff: wait longer after each dismissal
             const waitDays = Math.min(dismissals * 7, 30); // Max 30 days
-            
+
             return daysSinceLastDismissal >= waitDays;
         } catch (error) {
             console.error('[PWA] Error checking install prompt eligibility:', error);
@@ -1266,7 +1266,7 @@ class PWAManager {
      */
     handleNewServiceWorker(worker) {
         console.log('[PWA] New service worker installing');
-        
+
         worker.addEventListener('statechange', () => {
             if (worker.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
@@ -1288,13 +1288,13 @@ class PWAManager {
      */
     handleControllerChange() {
         // Show success message
-        this.showUserMessage('App Updated', 
-            'The app has been updated to the latest version!', 
+        this.showUserMessage('App Updated',
+            'The app has been updated to the latest version!',
             'success');
-        
+
         // Clear update flag
         this.updateAvailable = false;
-        
+
         // Optionally refresh critical data
         this.refreshCriticalData();
     }
@@ -1304,10 +1304,10 @@ class PWAManager {
      */
     handleFirstTimeInstallation() {
         console.log('[PWA] First time PWA setup complete');
-        
+
         // Show welcome message
-        this.showUserMessage('PWA Ready', 
-            'The app is now ready for offline use!', 
+        this.showUserMessage('PWA Ready',
+            'The app is now ready for offline use!',
             'success');
     }
 
@@ -1320,10 +1320,10 @@ class PWAManager {
             if (window.offlineDataManager) {
                 await window.offlineDataManager.refreshCriticalData();
             }
-            
+
             // Dispatch event for other components to refresh
             window.dispatchEvent(new CustomEvent('pwa-app-updated'));
-            
+
         } catch (error) {
             console.error('[PWA] Error refreshing critical data:', error);
         }
@@ -1373,10 +1373,10 @@ class PWAManager {
     initializeLazyLoading() {
         // Lazy load images
         this.setupImageLazyLoading();
-        
+
         // Lazy load non-critical JavaScript modules
         this.setupModuleLazyLoading();
-        
+
         // Lazy load non-critical CSS
         this.setupCSSLazyLoading();
     }
@@ -1391,12 +1391,12 @@ class PWAManager {
                     if (entry.isIntersecting) {
                         const img = entry.target;
                         const src = img.dataset.src;
-                        
+
                         if (src) {
                             img.src = src;
                             img.removeAttribute('data-src');
                             observer.unobserve(img);
-                            
+
                             // Track lazy load event
                             this.trackAnalyticsEvent('image_lazy_loaded', {
                                 src: src,
@@ -1420,7 +1420,7 @@ class PWAManager {
                 mutations.forEach(mutation => {
                     mutation.addedNodes.forEach(node => {
                         if (node.nodeType === 1) { // Element node
-                            const lazyImages = node.querySelectorAll ? 
+                            const lazyImages = node.querySelectorAll ?
                                 node.querySelectorAll('img[data-src]') : [];
                             lazyImages.forEach(img => imageObserver.observe(img));
                         }
@@ -1452,12 +1452,12 @@ class PWAManager {
                 try {
                     const module = await lazyModules[moduleName]();
                     console.log('[PWA] Lazy loaded module:', moduleName);
-                    
+
                     this.trackAnalyticsEvent('module_lazy_loaded', {
                         module: moduleName,
                         timestamp: Date.now()
                     });
-                    
+
                     return module;
                 } catch (error) {
                     console.error('[PWA] Failed to lazy load module:', moduleName, error);
@@ -1504,31 +1504,31 @@ class PWAManager {
         try {
             // Get navigation timing
             const navigation = performance.getEntriesByType('navigation')[0];
-            
+
             // Get resource timing
             const resources = performance.getEntriesByType('resource');
-            
+
             // Calculate metrics
             const metrics = {
                 // Page load metrics
                 domContentLoaded: navigation ? navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart : 0,
                 loadComplete: navigation ? navigation.loadEventEnd - navigation.loadEventStart : 0,
                 firstPaint: this.getFirstPaint(),
-                
+
                 // Resource metrics
                 totalResources: resources.length,
                 cachedResources: resources.filter(r => r.transferSize === 0).length,
-                
+
                 // PWA specific metrics
                 serviceWorkerActive: !!navigator.serviceWorker.controller,
                 offlineQueueLength: this.getOfflineQueueLength(),
-                
+
                 // Cache metrics from service worker
                 cacheMetrics: await this.getCacheMetrics(),
-                
+
                 timestamp: Date.now()
             };
-            
+
             return metrics;
         } catch (error) {
             console.error('[PWA] Failed to get performance metrics:', error);
@@ -1579,25 +1579,25 @@ class PWAManager {
     async optimizePerformance() {
         try {
             console.log('[PWA] Starting performance optimization...');
-            
+
             // Initialize lazy loading
             this.initializeLazyLoading();
-            
+
             // Preload critical resources
             await this.preloadCriticalResources();
-            
+
             // Optimize service worker cache
             this.optimizeServiceWorkerCache();
-            
+
             // Set up performance monitoring
             this.setupPerformanceMonitoring();
-            
+
             console.log('[PWA] Performance optimization complete');
-            
+
             this.trackAnalyticsEvent('performance_optimization_complete', {
                 timestamp: Date.now()
             });
-            
+
         } catch (error) {
             console.error('[PWA] Performance optimization failed:', error);
         }
@@ -1688,38 +1688,38 @@ class PWAManager {
 // Initialize PWA Manager when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.pwaManager = new PWAManager();
-    
+
     // Initialize performance optimizations
     window.pwaManager.optimizePerformance();
-    
+
     // Integrate with existing CRM object if available
     if (window.CRM) {
         // Override CRM.ajax to queue offline actions
         const originalAjax = window.CRM.ajax.bind(window.CRM);
-        
-        window.CRM.ajax = async function(url, options = {}) {
+
+        window.CRM.ajax = async function (url, options = {}) {
             try {
                 return await originalAjax(url, options);
             } catch (error) {
                 // If offline and this is a modifying request, queue it
-                if (!window.pwaManager.getOnlineStatus() && 
-                    options.method && 
+                if (!window.pwaManager.getOnlineStatus() &&
+                    options.method &&
                     ['POST', 'PUT', 'DELETE'].includes(options.method.toUpperCase())) {
-                    
+
                     window.pwaManager.queueOfflineAction({
                         endpoint: window.CRM.baseUrl + url,
                         method: options.method,
                         data: options.body,
                         headers: options.headers
                     });
-                    
+
                     // Show user feedback
                     window.CRM.showAlert('Action queued for when you\'re back online', 'info');
-                    
+
                     // Return a resolved promise to prevent UI errors
                     return { success: true, queued: true };
                 }
-                
+
                 throw error;
             }
         };

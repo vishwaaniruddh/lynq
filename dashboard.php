@@ -542,25 +542,25 @@ ob_start();
                 </div>
                 <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">Dispatch Pipeline</h4>
             </div>
-            <a href="inventory/dispatches/index.php" class="text-[10px] font-semibold text-cyan-600 hover:text-cyan-800 transition">View All →</a>
+            <a href="inventory/dispatch.php" class="text-[10px] font-semibold text-cyan-600 hover:text-cyan-800 transition">View All →</a>
         </div>
         <div class="grid grid-cols-4 gap-1.5 text-center">
-            <div class="p-2 bg-amber-50/80 rounded-xl border border-amber-100">
-                <p class="text-base font-black text-amber-600"><?php echo (int)$dispatchStats['pending']; ?></p>
+            <a href="inventory/dispatch.php?status=pending" class="block p-2 bg-amber-50/80 hover:bg-amber-100 rounded-xl border border-amber-100 transition cursor-pointer group" title="Filter Pending Dispatches">
+                <p class="text-base font-black text-amber-600 group-hover:scale-105 transition-transform"><?php echo (int)$dispatchStats['pending']; ?></p>
                 <p class="text-[9px] font-semibold text-gray-500">Pending</p>
-            </div>
-            <div class="p-2 bg-blue-50/80 rounded-xl border border-blue-100">
-                <p class="text-base font-black text-blue-600"><?php echo (int)$dispatchStats['in_transit']; ?></p>
+            </a>
+            <a href="inventory/dispatch.php?status=in_transit" class="block p-2 bg-blue-50/80 hover:bg-blue-100 rounded-xl border border-blue-100 transition cursor-pointer group" title="Filter In Transit Dispatches">
+                <p class="text-base font-black text-blue-600 group-hover:scale-105 transition-transform"><?php echo (int)$dispatchStats['in_transit']; ?></p>
                 <p class="text-[9px] font-semibold text-gray-500">Transit</p>
-            </div>
-            <div class="p-2 bg-emerald-50/80 rounded-xl border border-emerald-100">
-                <p class="text-base font-black text-emerald-600"><?php echo (int)$dispatchStats['delivered']; ?></p>
+            </a>
+            <a href="inventory/dispatch.php?status=delivered" class="block p-2 bg-emerald-50/80 hover:bg-emerald-100 rounded-xl border border-emerald-100 transition cursor-pointer group" title="Filter Delivered Dispatches">
+                <p class="text-base font-black text-emerald-600 group-hover:scale-105 transition-transform"><?php echo (int)$dispatchStats['delivered']; ?></p>
                 <p class="text-[9px] font-semibold text-gray-500">Delivered</p>
-            </div>
-            <div class="p-2 bg-rose-50/80 rounded-xl border border-rose-100">
-                <p class="text-base font-black text-rose-600"><?php echo (int)$dispatchStats['cancelled']; ?></p>
+            </a>
+            <a href="inventory/dispatch.php?status=cancelled" class="block p-2 bg-rose-50/80 hover:bg-rose-100 rounded-xl border border-rose-100 transition cursor-pointer group" title="Filter Cancelled Dispatches">
+                <p class="text-base font-black text-rose-600 group-hover:scale-105 transition-transform"><?php echo (int)$dispatchStats['cancelled']; ?></p>
                 <p class="text-[9px] font-semibold text-gray-500">Cancel</p>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -676,7 +676,7 @@ ob_start();
                 <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">Dispatch Overview</h4>
                 <p class="text-[10px] text-gray-400 font-medium">Logistics status flow</p>
             </div>
-            <span class="p-1.5 bg-cyan-50 rounded-lg text-cyan-600 text-xs"><i class="fas fa-chart-line"></i></span>
+            <a href="inventory/dispatch.php" class="p-1.5 bg-cyan-50 hover:bg-cyan-100 rounded-lg text-cyan-600 text-xs transition" title="Go to Dispatch Logistics"><i class="fas fa-arrow-right"></i></a>
         </div>
         <div class="chart-container-adv">
             <canvas id="dispatchChart"></canvas>
@@ -686,77 +686,77 @@ ob_start();
 
 <!-- Vibrant Full-Gradient Logistics Summary Row (6 Columns) -->
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
-    <div class="card-hover grad-rose rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/assets.php?status=dispatched" title="View Dispatched Serialized Assets" class="block card-hover grad-rose rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo $inventoryStats['dispatched']; ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Dispatched</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-truck text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card-hover grad-amber rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/assets.php?status=under_repair" title="View Under Repair Assets" class="block card-hover grad-amber rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo $inventoryStats['under_repair']; ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Under Repair</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-tools text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card-hover grad-orange-red rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/assets.php?working_condition=not_working" title="View Defective Assets" class="block card-hover grad-orange-red rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo $inventoryStats['not_working']; ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Defective</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-exclamation-triangle text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card-hover grad-blue-violet rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/transfers.php" title="View Stock Transfers" class="block card-hover grad-blue-violet rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo (int)($transferStats['total'] ?? 0); ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Transfers</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-exchange-alt text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card-hover grad-teal-cyan rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/repairs.php" title="View Repair Records" class="block card-hover grad-teal-cyan rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo (int)($repairStats['total'] ?? 0); ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Repairs</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-wrench text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card-hover grad-dark rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group">
+    <a href="inventory/assets.php?status=scrapped" title="View Scrapped Assets" class="block card-hover grad-dark rounded-2xl p-4 text-white shadow-lg relative overflow-hidden group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-xl">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-2xl font-black tracking-tight"><?php echo $inventoryStats['scrapped']; ?></p>
                 <p class="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5">Scrapped</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                 <i class="fas fa-trash text-white text-sm"></i>
             </div>
         </div>
-    </div>
+    </a>
 </div>
 
 <!-- Activity Stream & Quick Action Hub (3 Columns Layout) -->

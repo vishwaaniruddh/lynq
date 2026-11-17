@@ -1,5 +1,26 @@
+# Security & URL Rewriting Rules
 <IfModule mod_rewrite.c>
 RewriteEngine On
+
+# Pass Authorization header to PHP
 RewriteCond %{HTTP:Authorization} ^(.*)
 RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
+# Redirect legacy new_crm or clarity/new_crm URLs to root
+RewriteRule ^new_crm/(.*)$ /$1 [R=302,L,QSA]
+RewriteRule ^clarity/new_crm/(.*)$ /$1 [R=302,L,QSA]
+
+# Block direct web access to sensitive internal directories
+RewriteRule ^(tests|migrations|backups|cron|scratch)(\/|$) - [F,L]
+
+# Block access to hidden files and directories (e.g., .git, .env)
+RewriteRule (^|/)\.(git|env|vscode|idea) - [F,L]
 </IfModule>
+
+# Custom Error Pages
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 500 /error.php?code=500
+
+# Prevent directory browsing
+Options -Indexes

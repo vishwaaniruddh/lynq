@@ -522,11 +522,12 @@ function setupEventListeners() {
         }, 300);
     });
 
-    ['bank-filter', 'status-filter', 'delegation-filter', 'material-filter', 'installation-filter'].forEach(id => {
+    ['bank-filter', 'status-filter', 'delegation-filter', 'survey-filter', 'material-filter', 'installation-filter'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', (e) => {
-                const key = id.replace('-filter', '').replace('-', '_');
+                let key = id.replace('-filter', '').replace('-', '_');
+                if (key === 'bank') key = 'bank_name';
                 state.filters[key] = e.target.value;
                 state.pagination.page = 1;
                 loadSites();

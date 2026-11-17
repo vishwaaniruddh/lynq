@@ -360,7 +360,7 @@ class MasterModuleMiddleware {
         } else {
             // Redirect to login page
             $_SESSION['error_message'] = $message;
-            header('Location: /new_crm/index.php?error=' . urlencode($message));
+            header('Location: /views/auth/login.php?error=' . urlencode($message));
             exit;
         }
     }
@@ -388,9 +388,16 @@ class MasterModuleMiddleware {
             
             $this->sendJsonResponse(403, $response);
         } else {
-            // Redirect to dashboard with error message
+            // Redirect to proper error showcase page with details
             $_SESSION['error_message'] = $message;
-            header('Location: /new_crm/dashboard.php?error=' . urlencode($message));
+            $queryParams = [
+                'code' => 403,
+                'message' => $message
+            ];
+            if (!empty($details['required_permission'])) {
+                $queryParams['required_permission'] = $details['required_permission'];
+            }
+            header('Location: /error.php?' . http_build_query($queryParams));
             exit;
         }
     }

@@ -152,7 +152,7 @@ class FileManagerMiddleware {
             ]);
         } else {
             // Redirect to login page
-            header('Location: /clarity/new_crm/index.php?error=' . urlencode($message));
+            header('Location: /views/auth/login.php?error=' . urlencode($message));
             exit;
         }
     }
@@ -173,8 +173,8 @@ class FileManagerMiddleware {
                 ]
             ]);
         } else {
-            // Redirect to dashboard with access denied message (Requirement 6.3)
-            header('Location: /clarity/new_crm/dashboard.php?error=' . urlencode('Access Denied: ' . $message));
+            // Redirect to proper error page
+            header('Location: /error.php?code=403&message=' . urlencode('Access Denied: ' . $message));
             exit;
         }
     }
@@ -194,7 +194,7 @@ class FileManagerMiddleware {
                 ]
             ]);
         } else {
-            header('Location: /clarity/new_crm/dashboard.php?error=' . urlencode('Server Error: ' . $message));
+            header('Location: /error.php?code=500&message=' . urlencode('Server Error: ' . $message));
             exit;
         }
     }

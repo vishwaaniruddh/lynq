@@ -104,6 +104,9 @@ ob_start();
                 <p class="text-sm text-gray-500">Track and manage serialized inventory items</p>
             </div>
             <div class="flex items-center gap-3">
+                <a href="dispatch.php" class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition flex items-center font-medium text-sm">
+                    <i class="fas fa-shipping-fast mr-2"></i>Dispatch Logistics
+                </a>
                 <button onclick="exportAssets()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center">
                     <i class="fas fa-file-excel mr-2"></i>Export
                 </button>

@@ -56,6 +56,9 @@ ob_start();
                 <p class="text-sm text-gray-500">Create and track inventory dispatches</p>
             </div>
             <div class="flex items-center gap-3">
+                <a href="assets.php?status=dispatched" class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition flex items-center font-medium text-sm">
+                    <i class="fas fa-barcode mr-2"></i>Dispatched Assets (7)
+                </a>
                 <?php if ($canCreate): ?>
                 <button onclick="openDispatchModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition flex items-center">
                     <i class="fas fa-paper-plane mr-2"></i>New Dispatch
@@ -365,6 +368,7 @@ const API_URL = '../api/inventory/dispatch';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    initFiltersFromUrl();
     loadWarehouses();
     loadCouriers();
     loadCompanies();
@@ -375,6 +379,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if coming from material request
     checkMaterialRequestParam();
 });
+
+function initFiltersFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('status')) {
+        state.filters.status = urlParams.get('status');
+        const sel = document.getElementById('status-filter');
+        if (sel) sel.value = state.filters.status;
+    }
+    if (urlParams.has('from_warehouse_id') || urlParams.has('warehouse_id')) {
+        state.filters.from_warehouse_id = urlParams.get('from_warehouse_id') || urlParams.get('warehouse_id');
+    }
+    if (urlParams.has('search')) {
+        state.filters.search = urlParams.get('search');
+        const inp = document.getElementById('search-input');
+        if (inp) inp.value = state.filters.search;
+    }
+}
 
 // Check for material_request_id parameter and pre-fill dispatch form
 async function checkMaterialRequestParam() {
@@ -822,9 +843,15 @@ async function loadWarehouses() {
 
 function populateWarehouseDropdowns() {
     const options = state.warehouses.map(w => `<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('');
-    document.getElementById('warehouse-filter').innerHTML = '<option value="">All Warehouses</option>' + options;
-    document.getElementById('dispatch-from-warehouse').innerHTML = '<option value="">Select Source Warehouse</option>' + options;
-    document.getElementById('dispatch-to-warehouse').innerHTML = '<option value="">Select Destination Warehouse</option>' + options;
+    const whFilter = document.getElementById('warehouse-filter');
+    if (whFilter) {
+        whFilter.innerHTML = '<option value="">All Warehouses</option>' + options;
+        if (state.filters.from_warehouse_id) whFilter.value = state.filters.from_warehouse_id;
+    }
+    const fromWh = document.getElementById('dispatch-from-warehouse');
+    if (fromWh) fromWh.innerHTML = '<option value="">Select Source Warehouse</option>' + options;
+    const toWh = document.getElementById('dispatch-to-warehouse');
+    if (toWh) toWh.innerHTML = '<option value="">Select Destination Warehouse</option>' + options;
 }
 
 async function loadCouriers() {

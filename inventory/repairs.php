@@ -357,10 +357,30 @@ const STATUS_CONFIG = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    initFiltersFromUrl();
     loadWarehouses();
     loadRepairs();
     setupEventListeners();
 });
+
+function initFiltersFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('status')) {
+        state.filters.status = urlParams.get('status');
+        const sel = document.getElementById('status-filter');
+        if (sel) sel.value = state.filters.status;
+    }
+    if (urlParams.has('overdue')) {
+        state.filters.overdue = urlParams.get('overdue');
+        const sel = document.getElementById('overdue-filter');
+        if (sel) sel.value = state.filters.overdue;
+    }
+    if (urlParams.has('search')) {
+        state.filters.search = urlParams.get('search');
+        const inp = document.getElementById('search-input');
+        if (inp) inp.value = state.filters.search;
+    }
+}
 
 function setupEventListeners() {
     let searchTimeout;

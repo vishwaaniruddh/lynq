@@ -13,7 +13,7 @@ class CacheOptimizer {
             preloadBatchSize: 5,
             retryAttempts: 3
         };
-        
+
         this.metrics = {
             cacheHits: 0,
             cacheMisses: 0,
@@ -22,39 +22,39 @@ class CacheOptimizer {
             lastOptimization: null,
             performanceGains: []
         };
-        
+
         this.isOptimizing = false;
         this.preloadQueue = [];
         this.optimizationHistory = [];
-        
+
         this.init();
     }
-    
+
     /**
      * Initialize cache optimizer
      */
     async init() {
         try {
             console.log('[Cache Optimizer] Initializing...');
-            
+
             // Load stored metrics
             await this.loadStoredMetrics();
-            
+
             // Start monitoring
             this.startPerformanceMonitoring();
-            
+
             // Schedule periodic optimization
             this.scheduleOptimization();
-            
+
             // Listen for service worker messages
             this.setupServiceWorkerCommunication();
-            
+
             console.log('[Cache Optimizer] Initialized successfully');
         } catch (error) {
             console.error('[Cache Optimizer] Initialization failed:', error);
         }
     }
-    
+
     /**
      * Start performance monitoring
      */
@@ -63,14 +63,14 @@ class CacheOptimizer {
         setInterval(() => {
             this.collectCacheMetrics();
         }, this.config.metricsInterval);
-        
+
         // Monitor network performance
         if ('connection' in navigator) {
             navigator.connection.addEventListener('change', () => {
                 this.handleNetworkChange();
             });
         }
-        
+
         // Monitor page visibility for optimization timing
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -78,7 +78,7 @@ class CacheOptimizer {
             }
         });
     }
-    
+
     /**
      * Schedule periodic cache optimization
      */
@@ -89,7 +89,7 @@ class CacheOptimizer {
             }
         }, this.config.optimizationInterval);
     }
-    
+
     /**
      * Setup communication with service worker
      */
@@ -100,7 +100,7 @@ class CacheOptimizer {
             });
         }
     }
-    
+
     /**
      * Handle messages from service worker
      */
@@ -109,17 +109,17 @@ class CacheOptimizer {
             case 'CACHE_METRICS':
                 this.updateCacheMetrics(data.metrics);
                 break;
-                
+
             case 'OPTIMIZATION_NEEDED':
                 this.runOptimization();
                 break;
-                
+
             case 'PRELOAD_COMPLETE':
                 this.handlePreloadComplete(data);
                 break;
         }
     }
-    
+
     /**
      * Run comprehensive cache optimization
      */
@@ -128,66 +128,66 @@ class CacheOptimizer {
             console.log('[Cache Optimizer] Optimization already in progress');
             return;
         }
-        
+
         this.isOptimizing = true;
         const startTime = performance.now();
-        
+
         try {
             console.log('[Cache Optimizer] Starting optimization...');
-            
+
             const results = {
                 sizeOptimization: await this.optimizeCacheSize(),
                 strategyOptimization: await this.optimizeCacheStrategies(),
                 preloadOptimization: await this.optimizePreloading(),
                 cleanupResults: await this.performIntelligentCleanup()
             };
-            
+
             const duration = performance.now() - startTime;
-            
+
             // Record optimization results
             this.recordOptimizationResults(results, duration);
-            
+
             // Send results to analytics
             await this.sendOptimizationMetrics(results, duration);
-            
+
             console.log('[Cache Optimizer] Optimization completed in', duration.toFixed(2), 'ms');
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Optimization failed:', error);
         } finally {
             this.isOptimizing = false;
         }
     }
-    
+
     /**
      * Optimize cache size by removing least used items
      */
     async optimizeCacheSize() {
         try {
             const cacheStatus = await this.getCacheStatus();
-            
+
             if (cacheStatus.usagePercentage < this.config.cleanupThreshold * 100) {
                 return { action: 'no_cleanup_needed', currentUsage: cacheStatus.usagePercentage };
             }
-            
+
             // Request cache cleanup from service worker
             const cleanupResults = await this.requestServiceWorkerAction('OPTIMIZE_CACHE', {
                 type: 'size',
                 targetUsage: 60 // Target 60% usage
             });
-            
+
             return {
                 action: 'size_optimized',
                 spaceSaved: cleanupResults.spaceSaved || 0,
                 entriesRemoved: cleanupResults.entriesRemoved || 0
             };
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Size optimization failed:', error);
             return { action: 'size_optimization_failed', error: error.message };
         }
     }
-    
+
     /**
      * Optimize caching strategies based on usage patterns
      */
@@ -195,7 +195,7 @@ class CacheOptimizer {
         try {
             const usagePatterns = await this.analyzeUsagePatterns();
             const optimizations = [];
-            
+
             // Analyze API endpoint patterns
             for (const [endpoint, stats] of Object.entries(usagePatterns.apiEndpoints || {})) {
                 if (stats.hitRate < 0.3 && stats.requestCount > 10) {
@@ -216,26 +216,26 @@ class CacheOptimizer {
                     });
                 }
             }
-            
+
             // Apply optimizations
             if (optimizations.length > 0) {
                 await this.requestServiceWorkerAction('UPDATE_STRATEGIES', {
                     optimizations: optimizations
                 });
             }
-            
+
             return {
                 action: 'strategies_optimized',
                 optimizationCount: optimizations.length,
                 optimizations: optimizations
             };
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Strategy optimization failed:', error);
             return { action: 'strategy_optimization_failed', error: error.message };
         }
     }
-    
+
     /**
      * Optimize resource preloading
      */
@@ -243,28 +243,28 @@ class CacheOptimizer {
         try {
             const criticalResources = await this.identifyCriticalResources();
             const currentPreloaded = await this.getCurrentPreloadedResources();
-            
+
             // Find resources to add to preload
-            const toPreload = criticalResources.filter(resource => 
-                !currentPreloaded.includes(resource) && 
+            const toPreload = criticalResources.filter(resource =>
+                !currentPreloaded.includes(resource) &&
                 this.shouldPreloadResource(resource)
             );
-            
+
             // Find resources to remove from preload
-            const toRemove = currentPreloaded.filter(resource => 
+            const toRemove = currentPreloaded.filter(resource =>
                 !criticalResources.includes(resource) ||
                 !this.shouldPreloadResource(resource)
             );
-            
+
             // Apply preload changes
             if (toPreload.length > 0) {
                 await this.preloadResources(toPreload);
             }
-            
+
             if (toRemove.length > 0) {
                 await this.removeFromPreload(toRemove);
             }
-            
+
             return {
                 action: 'preload_optimized',
                 resourcesAdded: toPreload.length,
@@ -272,13 +272,13 @@ class CacheOptimizer {
                 addedResources: toPreload,
                 removedResources: toRemove
             };
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Preload optimization failed:', error);
             return { action: 'preload_optimization_failed', error: error.message };
         }
     }
-    
+
     /**
      * Perform intelligent cache cleanup
      */
@@ -289,36 +289,36 @@ class CacheOptimizer {
                 maxAge: 24 * 60 * 60 * 1000, // 24 hours
                 sizeLimit: this.config.maxCacheSize
             });
-            
+
             return {
                 action: 'intelligent_cleanup',
                 entriesRemoved: cleanupResults.entriesRemoved || 0,
                 spaceSaved: cleanupResults.spaceSaved || 0,
                 cachesCleaned: cleanupResults.cachesCleaned || []
             };
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Intelligent cleanup failed:', error);
             return { action: 'cleanup_failed', error: error.message };
         }
     }
-    
+
     /**
      * Optimize cache in background when page is hidden
      */
     async optimizeInBackground() {
         if (this.isOptimizing) return;
-        
+
         try {
             // Perform lightweight optimizations
             await this.performIntelligentCleanup();
             await this.preloadCriticalResources();
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Background optimization failed:', error);
         }
     }
-    
+
     /**
      * Preload critical resources
      */
@@ -326,34 +326,34 @@ class CacheOptimizer {
         try {
             const criticalResources = await this.identifyCriticalResources();
             const batchSize = this.config.preloadBatchSize;
-            
+
             // Process in batches to avoid overwhelming the network
             for (let i = 0; i < criticalResources.length; i += batchSize) {
                 const batch = criticalResources.slice(i, i + batchSize);
                 await this.preloadResourceBatch(batch);
-                
+
                 // Small delay between batches
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Critical resource preloading failed:', error);
         }
     }
-    
+
     /**
      * Preload a batch of resources
      */
     async preloadResourceBatch(resources) {
         const promises = resources.map(resource => this.preloadResource(resource));
-        
+
         try {
             await Promise.allSettled(promises);
         } catch (error) {
             console.error('[Cache Optimizer] Batch preload failed:', error);
         }
     }
-    
+
     /**
      * Preload individual resource
      */
@@ -363,19 +363,19 @@ class CacheOptimizer {
                 method: 'GET',
                 cache: 'force-cache'
             });
-            
+
             if (response.ok) {
                 console.log('[Cache Optimizer] Preloaded:', resource);
                 return true;
             }
-            
+
         } catch (error) {
             console.warn('[Cache Optimizer] Failed to preload:', resource, error);
         }
-        
+
         return false;
     }
-    
+
     /**
      * Identify critical resources based on usage patterns
      */
@@ -383,7 +383,7 @@ class CacheOptimizer {
         try {
             // Get usage analytics
             const usageData = await this.getUsageAnalytics();
-            
+
             // Default critical resources
             const criticalResources = [
                 '/',
@@ -394,25 +394,25 @@ class CacheOptimizer {
                 '/assets/icons/icon-192.png',
                 '/offline.html'
             ];
-            
+
             // Add frequently accessed resources
             if (usageData && usageData.frequentResources) {
                 usageData.frequentResources.forEach(resource => {
-                    if (!criticalResources.includes(resource) && 
+                    if (!criticalResources.includes(resource) &&
                         this.isValidCriticalResource(resource)) {
                         criticalResources.push(resource);
                     }
                 });
             }
-            
+
             return criticalResources;
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Failed to identify critical resources:', error);
             return []; // Return empty array on error
         }
     }
-    
+
     /**
      * Check if resource should be preloaded
      */
@@ -421,15 +421,15 @@ class CacheOptimizer {
         if (resource.match(/\.(mp4|avi|zip|pdf)$/i)) {
             return false;
         }
-        
+
         // Don't preload external resources
         if (resource.startsWith('http') && !resource.includes(location.hostname)) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
      * Check if resource is valid for critical resource list
      */
@@ -438,16 +438,16 @@ class CacheOptimizer {
         if (resource.startsWith('http') && !resource.includes(location.hostname)) {
             return false;
         }
-        
+
         // Must be reasonable size (estimated)
         const largeFileExtensions = ['.mp4', '.avi', '.zip', '.pdf', '.exe'];
         if (largeFileExtensions.some(ext => resource.toLowerCase().includes(ext))) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
      * Get current cache status
      */
@@ -461,10 +461,10 @@ class CacheOptimizer {
         } catch (error) {
             console.error('[Cache Optimizer] Failed to get cache status:', error);
         }
-        
+
         return { usagePercentage: 0, totalSize: 0 };
     }
-    
+
     /**
      * Analyze usage patterns
      */
@@ -478,10 +478,10 @@ class CacheOptimizer {
         } catch (error) {
             console.error('[Cache Optimizer] Failed to analyze usage patterns:', error);
         }
-        
+
         return { apiEndpoints: {}, resources: {} };
     }
-    
+
     /**
      * Get usage analytics
      */
@@ -495,10 +495,10 @@ class CacheOptimizer {
         } catch (error) {
             console.error('[Cache Optimizer] Failed to get usage analytics:', error);
         }
-        
+
         return null;
     }
-    
+
     /**
      * Request action from service worker
      */
@@ -508,9 +508,9 @@ class CacheOptimizer {
                 reject(new Error('No service worker controller'));
                 return;
             }
-            
+
             const messageChannel = new MessageChannel();
-            
+
             messageChannel.port1.onmessage = (event) => {
                 if (event.data.error) {
                     reject(new Error(event.data.error));
@@ -518,20 +518,20 @@ class CacheOptimizer {
                     resolve(event.data);
                 }
             };
-            
+
             navigator.serviceWorker.controller.postMessage({
                 type: action,
                 data: data,
                 port: messageChannel.port2
             }, [messageChannel.port2]);
-            
+
             // Timeout after 30 seconds
             setTimeout(() => {
                 reject(new Error('Service worker action timeout'));
             }, 30000);
         });
     }
-    
+
     /**
      * Collect cache metrics
      */
@@ -540,51 +540,51 @@ class CacheOptimizer {
             // Request metrics from service worker
             const metrics = await this.requestServiceWorkerAction('GET_CACHE_METRICS');
             this.updateCacheMetrics(metrics);
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Failed to collect cache metrics:', error);
         }
     }
-    
+
     /**
      * Update cache metrics
      */
     updateCacheMetrics(newMetrics) {
         Object.assign(this.metrics, newMetrics);
-        
+
         // Store metrics
         this.storeMetrics();
-        
+
         // Check if optimization is needed
         this.checkOptimizationNeeded();
     }
-    
+
     /**
      * Check if optimization is needed
      */
     checkOptimizationNeeded() {
         const hitRate = this.metrics.cacheHits / (this.metrics.cacheHits + this.metrics.cacheMisses);
-        
+
         // Trigger optimization if hit rate is low
         if (hitRate < 0.6 && this.metrics.totalRequests > 50) {
             console.log('[Cache Optimizer] Low hit rate detected, scheduling optimization');
             setTimeout(() => this.runOptimization(), 1000);
         }
     }
-    
+
     /**
      * Handle network change
      */
     handleNetworkChange() {
         const connection = navigator.connection;
-        
+
         if (connection) {
             console.log('[Cache Optimizer] Network changed:', {
                 effectiveType: connection.effectiveType,
                 downlink: connection.downlink,
                 rtt: connection.rtt
             });
-            
+
             // Adjust optimization strategy based on network
             if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
                 // Aggressive caching for slow networks
@@ -595,7 +595,7 @@ class CacheOptimizer {
             }
         }
     }
-    
+
     /**
      * Optimize for slow network conditions
      */
@@ -603,18 +603,18 @@ class CacheOptimizer {
         try {
             // Preload more critical resources
             await this.preloadCriticalResources();
-            
+
             // Switch to more aggressive caching
             await this.requestServiceWorkerAction('UPDATE_STRATEGIES', {
                 networkCondition: 'slow',
                 defaultStrategy: 'cache-first'
             });
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Slow network optimization failed:', error);
         }
     }
-    
+
     /**
      * Optimize for fast network conditions
      */
@@ -625,12 +625,12 @@ class CacheOptimizer {
                 networkCondition: 'fast',
                 defaultStrategy: 'network-first'
             });
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Fast network optimization failed:', error);
         }
     }
-    
+
     /**
      * Record optimization results
      */
@@ -640,21 +640,21 @@ class CacheOptimizer {
             duration: duration,
             results: results
         };
-        
+
         this.optimizationHistory.push(record);
-        
+
         // Keep only last 50 records
         if (this.optimizationHistory.length > 50) {
             this.optimizationHistory = this.optimizationHistory.slice(-50);
         }
-        
+
         this.metrics.optimizationRuns++;
         this.metrics.lastOptimization = Date.now();
-        
+
         // Store updated metrics
         this.storeMetrics();
     }
-    
+
     /**
      * Send optimization metrics to analytics
      */
@@ -674,12 +674,12 @@ class CacheOptimizer {
                     }
                 })
             });
-            
+
         } catch (error) {
             console.error('[Cache Optimizer] Failed to send optimization metrics:', error);
         }
     }
-    
+
     /**
      * Load stored metrics
      */
@@ -694,7 +694,7 @@ class CacheOptimizer {
             console.error('[Cache Optimizer] Failed to load stored metrics:', error);
         }
     }
-    
+
     /**
      * Store metrics to localStorage
      */
@@ -705,7 +705,7 @@ class CacheOptimizer {
             console.error('[Cache Optimizer] Failed to store metrics:', error);
         }
     }
-    
+
     /**
      * Get optimization statistics
      */
@@ -717,7 +717,7 @@ class CacheOptimizer {
             config: { ...this.config }
         };
     }
-    
+
     /**
      * Manual optimization trigger
      */
