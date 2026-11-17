@@ -146,7 +146,7 @@ ob_start();
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
             <!-- 1. Search Query -->
             <div class="lg:col-span-2">
-                <input type="text" id="search-input" placeholder="Search Site ID, Bank, Location..." 
+                <input type="text" id="search-input" placeholder="Search Site ID, Bank, Address, City..." 
                     class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50/50">
             </div>
 
@@ -222,6 +222,7 @@ ob_start();
                     <!-- Section Header Row -->
                     <tr class="font-bold text-[11px] uppercase tracking-wider text-center border-b">
                         <th colspan="5" class="px-3 py-2 bg-slate-800 text-white border-r border-slate-700">1. SITE BASIC INFO</th>
+                        <th colspan="3" class="px-3 py-2 bg-emerald-800 text-white border-r border-emerald-700">LOCATION</th>
                         <th colspan="3" class="px-3 py-2 bg-purple-100 text-purple-900 border-r border-purple-200">2A. FEASIBILITY DELEGATION</th>
                         <th colspan="3" class="px-3 py-2 bg-indigo-100 text-indigo-900 border-r border-indigo-200">2B. INSTALLATION DELEGATION</th>
                         <th colspan="5" class="px-3 py-2 bg-teal-100 text-teal-900 border-r border-teal-200">3. SURVEY / FEASIBILITY STATUS</th>
@@ -237,7 +238,11 @@ ob_start();
                         <th class="px-3 py-2">Site / Xtranet ID</th>
                         <th class="px-3 py-2">Project</th>
                         <th class="px-3 py-2">Bank Name</th>
-                        <th class="px-3 py-2">Location</th>
+                        <th class="px-3 py-2">Address</th>
+                        <!-- Location Sub-columns (3 cols) -->
+                        <th class="px-3 py-2 bg-emerald-50 text-emerald-900">City</th>
+                        <th class="px-3 py-2 bg-emerald-50 text-emerald-900">State</th>
+                        <th class="px-3 py-2 bg-emerald-50 text-emerald-900">Zone</th>
                         <!-- 2A. Feasibility Delegation -->
                         <th class="px-3 py-2">Feasibility Vendor</th>
                         <th class="px-3 py-2">Status</th>
@@ -280,7 +285,12 @@ ob_start();
                         <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-28"></div></td>
                         <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
                         <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-24"></div></td>
-                        <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-20"></div></td>
+                        <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-24"></div></td>
+
+                        <!-- Location skeleton (City, State, Zone) -->
+                        <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
+                        <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
+                        <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-14"></div></td>
 
                         <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-20"></div></td>
                         <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-14"></div></td>
@@ -614,7 +624,12 @@ function renderSkeleton(rowsCount = 6) {
             <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-28"></div></td>
             <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
             <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-24"></div></td>
-            <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-20"></div></td>
+            <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-24"></div></td>
+
+            <!-- Location skeleton (City, State, Zone) -->
+            <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
+            <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-16"></div></td>
+            <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-14"></div></td>
 
             <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-20"></div></td>
             <td class="px-3 py-3"><div class="h-3 bg-gray-200 rounded w-14"></div></td>
@@ -653,12 +668,119 @@ function renderSkeleton(rowsCount = 6) {
     tbody.innerHTML = html;
 }
 
+// State to Zone mapping for client-side resolution
+const STATE_ZONE_MAP = {
+    'punjab': { state: 'Punjab', zone: 'North' },
+    'haryana': { state: 'Haryana', zone: 'North' },
+    'himachal pradesh': { state: 'Himachal Pradesh', zone: 'North' },
+    'jammu & kashmir': { state: 'Jammu and Kashmir', zone: 'North' },
+    'jammu and kashmir': { state: 'Jammu and Kashmir', zone: 'North' },
+    'uttarakhand': { state: 'Uttarakhand', zone: 'North' },
+    'uttaranchal': { state: 'Uttarakhand', zone: 'North' },
+    'uttar pradesh': { state: 'Uttar Pradesh', zone: 'North' },
+    'delhi': { state: 'Delhi', zone: 'North' },
+    'chandigarh': { state: 'Chandigarh', zone: 'North' },
+    'ladakh': { state: 'Ladakh', zone: 'North' },
+    'rajasthan': { state: 'Rajasthan', zone: 'North' },
+    'maharashtra': { state: 'Maharashtra', zone: 'West' },
+    'gujarat': { state: 'Gujarat', zone: 'West' },
+    'goa': { state: 'Goa', zone: 'West' },
+    'madhya pradesh': { state: 'Madhya Pradesh', zone: 'Central' },
+    'chhattisgarh': { state: 'Chhattisgarh', zone: 'Central' },
+    'west bengal': { state: 'West Bengal', zone: 'East' },
+    'bihar': { state: 'Bihar', zone: 'East' },
+    'jharkhand': { state: 'Jharkhand', zone: 'East' },
+    'odisha': { state: 'Odisha', zone: 'East' },
+    'orissa': { state: 'Odisha', zone: 'East' },
+    'tamil nadu': { state: 'Tamil Nadu', zone: 'South' },
+    'karnataka': { state: 'Karnataka', zone: 'South' },
+    'kerala': { state: 'Kerala', zone: 'South' },
+    'telangana': { state: 'Telangana', zone: 'South' },
+    'andhra pradesh': { state: 'Andhra Pradesh', zone: 'South' },
+    'assam': { state: 'Assam', zone: 'Northeast' },
+    'sikkim': { state: 'Sikkim', zone: 'Northeast' },
+    'meghalaya': { state: 'Meghalaya', zone: 'Northeast' },
+    'tripura': { state: 'Tripura', zone: 'Northeast' },
+    'mizoram': { state: 'Mizoram', zone: 'Northeast' },
+    'manipur': { state: 'Manipur', zone: 'Northeast' },
+    'nagaland': { state: 'Nagaland', zone: 'Northeast' },
+    'arunachal pradesh': { state: 'Arunachal Pradesh', zone: 'Northeast' }
+};
+
+function resolveSiteLocation(site) {
+    let city = (site.city || '').trim();
+    let state = (site.state || '').trim();
+    let zone = (site.zone || '').trim();
+    const address = (site.address || site.location || '').trim();
+
+    // 1. Resolve State & Zone from existing state if valid
+    if (state && STATE_ZONE_MAP[state.toLowerCase()]) {
+        const mapped = STATE_ZONE_MAP[state.toLowerCase()];
+        state = mapped.state;
+        if (!zone) zone = mapped.zone;
+    }
+
+    // 2. Scan address for state & zone if missing
+    if ((!state || !zone) && address) {
+        for (const [key, info] of Object.entries(STATE_ZONE_MAP)) {
+            const regex = new RegExp('\\b' + key.replace('&', '(&|and)') + '\\b', 'i');
+            if (regex.test(address)) {
+                if (!state) state = info.state;
+                if (!zone) zone = info.zone;
+                break;
+            }
+        }
+    }
+
+    // 3. Scan address for city if missing
+    if (!city && address) {
+        const distMatch = address.match(/(?:District|Distt\.?|Dist\.?|City|Town|TQ\.?|Tehsil)\s*[:\-]?\s*([A-Za-z\s]+?)(?:,|\.|\d|\(|$)/i);
+        if (distMatch && distMatch[1].trim().length > 2) {
+            city = distMatch[1].trim();
+        } else {
+            const parenMatch = address.match(/\(([A-Za-z\s]+)\)/);
+            if (parenMatch && parenMatch[1].trim().length < 25 && !/road|branch|near|post/i.test(parenMatch[1])) {
+                city = parenMatch[1].trim();
+            }
+        }
+    }
+
+    // 4. Fallback zone from state
+    if (!zone && state && STATE_ZONE_MAP[state.toLowerCase()]) {
+        zone = STATE_ZONE_MAP[state.toLowerCase()].zone;
+    }
+
+    return {
+        city: city || '-',
+        state: state || '-',
+        zone: zone || 'North'
+    };
+}
+
+function getZoneBadge(zone) {
+    if (!zone || zone === '-') return '<span class="text-gray-400 text-[10px]">-</span>';
+    const zLower = zone.toLowerCase();
+    let badgeClass = 'bg-gray-100 text-gray-700 border-gray-200';
+    if (zLower.includes('north') && !zLower.includes('east')) {
+        badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+    } else if (zLower.includes('south')) {
+        badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    } else if (zLower.includes('east') || zLower.includes('northeast')) {
+        badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
+    } else if (zLower.includes('west')) {
+        badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+    } else if (zLower.includes('central')) {
+        badgeClass = 'bg-teal-50 text-teal-700 border-teal-200';
+    }
+    return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold border ${badgeClass}">${escapeHtml(zone)}</span>`;
+}
+
 function renderTable() {
     const tbody = document.getElementById('sites-tbody');
     if (!state.sites.length) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="30" class="px-4 py-10 text-center text-gray-400 text-xs">
+                <td colspan="34" class="px-4 py-10 text-center text-gray-400 text-xs">
                     <i class="fas fa-inbox text-3xl mb-2"></i>
                     <p>No site records found for this project.</p>
                 </td>
@@ -668,6 +790,8 @@ function renderTable() {
 
     tbody.innerHTML = state.sites.map((site, idx) => {
         const srNo = (state.pagination.page - 1) * state.pagination.limit + idx + 1;
+        const siteAddress = site.address || site.location || '-';
+        const resolvedLoc = resolveSiteLocation(site);
         
         // 2A. Feasibility Delegation Badge/Action
         const feasDelBadge = site.contractor_name 
@@ -706,7 +830,14 @@ function renderTable() {
             <td class="px-3 py-2.5 font-semibold text-gray-800 whitespace-nowrap max-w-[220px] truncate" title="${escapeHtml(site.bank_name || '')}">
                 ${escapeHtml(site.bank_name || '-')}
             </td>
-            <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">${escapeHtml(site.city || '-')}, ${escapeHtml(site.state || '')}</td>
+            <td class="px-3 py-2.5 text-gray-600 max-w-[240px] truncate" title="${escapeHtml(siteAddress)}">
+                ${escapeHtml(siteAddress)}
+            </td>
+
+            <!-- Location (City, State, Zone - 3 cols) -->
+            <td class="px-3 py-2.5 font-medium text-gray-800 whitespace-nowrap">${escapeHtml(resolvedLoc.city)}</td>
+            <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">${escapeHtml(resolvedLoc.state)}</td>
+            <td class="px-3 py-2.5 whitespace-nowrap">${getZoneBadge(resolvedLoc.zone)}</td>
 
             <!-- 2A. Feasibility Delegation (3 cols) -->
             <td class="px-3 py-2.5 font-medium ${site.contractor_name ? 'text-purple-700' : 'text-gray-400'} whitespace-nowrap">
