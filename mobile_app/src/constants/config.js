@@ -8,14 +8,14 @@ const detectedHostIp = isLocalIpv4 ? rawHost : '192.168.0.3';
 
 export const DEFAULT_ENVIRONMENTS = [
   {
+    id: 'production',
+    label: 'Production Server (Official)',
+    url: 'https://lynq.advantagesb.com',
+  },
+  {
     id: 'local_wifi',
     label: `Local Wi-Fi (${detectedHostIp})`,
     url: `http://${detectedHostIp}/lynq`,
-  },
-  {
-    id: 'production',
-    label: 'Production Server',
-    url: 'https://lynq.advantagesb.com',
   },
   {
     id: 'localtunnel',

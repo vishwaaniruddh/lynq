@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "LYNQ Engineer",
-    "slug": "lynq-engineer",
+    "name": "LYNQ",
+    "slug": "lynq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f0f23"
+        "backgroundColor": "#ffffff"
       },
       "package": "com.lynq.engineer"
     },

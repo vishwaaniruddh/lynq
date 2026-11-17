@@ -10,29 +10,20 @@ import {
   Platform,
   ScrollView,
   Alert,
-  Modal,
+  Image,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { CustomButton } from '../components/CustomButton';
-import { DEFAULT_ENVIRONMENTS } from '../constants/config';
 import { COLORS, FONTS, RADIUS, SHADOWS, SPACING } from '../constants/theme';
 
 export const LoginScreen = () => {
-  const { login, isLoading, error, serverUrl, updateServerUrl } = useAuth();
+  const { login, isLoading, error } = useAuth();
   const [username, setUsername] = useState('vikaspal@gmail.com');
   const [password, setPassword] = useState('rootroot');
   const [showPassword, setShowPassword] = useState(false);
-  const [showServerModal, setShowServerModal] = useState(false);
-  const [customUrlInput, setCustomUrlInput] = useState(serverUrl || '');
-
-  const handleSaveServerUrl = async (urlToSave) => {
-    if (!urlToSave.trim()) return;
-    await updateServerUrl(urlToSave.trim());
-    setShowServerModal(false);
-    Alert.alert('Server Updated', `Connected server set to: ${urlToSave.trim()}`);
-  };
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -61,26 +52,39 @@ export const LoginScreen = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header & Logo */}
-          <View style={styles.brandHeader}>
-            <View style={styles.logoBadge}>
-              <Ionicons name="hardware-chip" size={32} color="#ffffff" />
-            </View>
-            <Text style={styles.brandTitle}>LYNQ</Text>
-            <Text style={styles.brandSubtitle}>Engineer Operations Portal</Text>
+          {/* Top Advantage Header */}
+          <View style={styles.topBranding}>
+            <Image
+              source={require('../../assets/advantage_logo.png')}
+              style={styles.advantageLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.erpSubtitle}>ENTERPRISE RESOURCE PLANNING</Text>
           </View>
 
-          {/* Form Card (ShadCN style) */}
+          {/* Main LYNQ Identity Graphic Card */}
+          <View style={[styles.lynqBannerCard, SHADOWS.medium]}>
+            <Image
+              source={require('../../assets/lynq_banner.png')}
+              style={styles.lynqBannerImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* Login Card */}
           <View style={[styles.card, SHADOWS.medium]}>
-            <Text style={styles.cardHeader}>Sign in to your account</Text>
-            <Text style={styles.cardSub}>Enter your engineer credentials to access field operations</Text>
+            <View style={styles.cardHeaderSection}>
+              <Text style={styles.cardTitle}>Welcome back</Text>
+              <Text style={styles.cardSubtitle}>Sign in to continue to your dashboard</Text>
+            </View>
 
             {/* Loading / Connecting Banner */}
             {isLoading && (
               <View style={styles.loadingBanner}>
                 <ActivityIndicator size="small" color={COLORS.primary} style={{ marginRight: 8 }} />
-                <Text style={styles.loadingBannerText}>Authenticating with server...</Text>
+                <Text style={styles.loadingBannerText}>Signing in...</Text>
               </View>
             )}
 
@@ -97,7 +101,7 @@ export const LoginScreen = () => {
               <Text style={styles.inputLabel}>Username or Email</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
-                  name="mail-outline"
+                  name="person-outline"
                   size={18}
                   color={COLORS.mutedForeground}
                   style={styles.inputIcon}
@@ -109,6 +113,7 @@ export const LoginScreen = () => {
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize="none"
+                  autoCorrect={false}
                   keyboardType="email-address"
                 />
               </View>
@@ -116,12 +121,7 @@ export const LoginScreen = () => {
 
             {/* Password Input */}
             <View style={styles.inputGroup}>
-              <View style={styles.passwordLabelRow}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <TouchableOpacity onPress={handleForgotPassword}>
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.inputLabel}>Password</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -151,94 +151,42 @@ export const LoginScreen = () => {
               </View>
             </View>
 
+            {/* Remember Me & Forgot Password */}
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={styles.rememberMeRow}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+                  {rememberMe && <Ionicons name="checkmark" size={12} color="#ffffff" />}
+                </View>
+                <Text style={styles.rememberMeText}>Remember me</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Sign In Button */}
             <CustomButton
-              title="Sign In with Email"
+              title="Sign In →"
               onPress={handleLogin}
               loading={isLoading}
-              icon="log-in-outline"
               size="lg"
               style={styles.loginBtn}
             />
           </View>
 
-          {/* Server Config Button */}
-          <TouchableOpacity
-            onPress={() => {
-              setCustomUrlInput(serverUrl);
-              setShowServerModal(true);
-            }}
-            style={styles.serverSettingsBtn}
-          >
-            <Ionicons name="server-outline" size={13} color={COLORS.mutedForeground} />
-            <Text style={styles.serverSettingsBtnText} numberOfLines={1}>
-              Server: {serverUrl}
-            </Text>
-            <Ionicons name="chevron-forward" size={12} color={COLORS.mutedForeground} />
-          </TouchableOpacity>
-
-          {/* Footer Terms Notice */}
+          {/* Footer Copyright */}
           <View style={styles.footerNote}>
             <Text style={styles.footerNoteText}>
-              Authorized personnel only. All access and GPS actions are logged for audit compliance.
+              © 2026 LYNQ. All rights reserved.
             </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Server URL Config Modal */}
-      <Modal visible={showServerModal} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalBox}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Backend Server Settings</Text>
-              <TouchableOpacity onPress={() => setShowServerModal(false)}>
-                <Ionicons name="close" size={20} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>Select or enter your server IP where Apache / XAMPP is running:</Text>
-
-            {/* Quick Environments */}
-            <View style={styles.envList}>
-              {DEFAULT_ENVIRONMENTS.filter(env => env.url && !env.placeholder).map((env) => {
-                const isSelected = serverUrl === env.url;
-                return (
-                  <TouchableOpacity
-                    key={env.id}
-                    style={[styles.envItem, isSelected && styles.envItemActive]}
-                    onPress={() => handleSaveServerUrl(env.url)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.envLabel, isSelected && styles.envLabelActive]}>{env.label}</Text>
-                      <Text style={styles.envUrl}>{env.url}</Text>
-                    </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Custom Input */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.inputLabel}>Custom URL</Text>
-              <TextInput
-                style={styles.textInputCustom}
-                value={customUrlInput}
-                onChangeText={setCustomUrlInput}
-                placeholder="http://192.168.0.3/lynq"
-                autoCapitalize="none"
-              />
-              <CustomButton
-                title="Apply Custom Server URL"
-                onPress={() => handleSaveServerUrl(customUrlInput)}
-                size="md"
-                style={{ marginTop: 8 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -246,7 +194,7 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#f8fafc',
   },
   keyboardView: {
     flex: 1,
@@ -254,52 +202,66 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl,
   },
-  brandHeader: {
+  topBranding: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.md,
   },
-  logoBadge: {
-    width: 58,
-    height: 58,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.primary,
+  advantageLogo: {
+    width: 170,
+    height: 38,
+    marginBottom: 4,
+  },
+  erpSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6366f1',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  lynqBannerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: RADIUS.xl,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    shadowColor: 'rgba(0, 0, 0, 0.05)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 3,
   },
-  brandTitle: {
-    fontSize: FONTS.header,
-    fontWeight: '900',
-    color: COLORS.textPrimary,
-    letterSpacing: 2,
-  },
-  brandSubtitle: {
-    fontSize: FONTS.small,
-    color: COLORS.mutedForeground,
-    marginTop: 2,
-    fontWeight: '500',
+  lynqBannerImage: {
+    width: '100%',
+    height: 180,
+    maxWidth: 320,
   },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
   },
-  cardHeader: {
-    fontSize: FONTS.title,
+  cardHeaderSection: {
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  cardTitle: {
+    fontSize: 22,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: '#1e293b',
     letterSpacing: -0.3,
   },
-  cardSub: {
-    fontSize: FONTS.small,
-    color: COLORS.mutedForeground,
-    marginBottom: SPACING.md,
-    marginTop: 4,
-    lineHeight: 18,
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 3,
   },
   loadingBanner: {
     flexDirection: 'row',
@@ -337,29 +299,18 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: SPACING.md,
   },
-  passwordLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
   inputLabel: {
-    fontSize: FONTS.small,
+    fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: '#334155',
     marginBottom: 6,
-  },
-  forgotText: {
-    fontSize: 11,
-    color: COLORS.mutedForeground,
-    fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#cbd5e1',
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.sm + 2,
   },
@@ -368,101 +319,59 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    paddingVertical: 11,
-    fontSize: FONTS.body,
-    color: COLORS.textPrimary,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1e293b',
   },
   eyeBtn: {
     padding: 6,
   },
-  loginBtn: {
-    marginTop: SPACING.xs,
-  },
-  serverSettingsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: SPACING.md,
-    paddingVertical: 8,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: RADIUS.md,
-    backgroundColor: '#f1f5f9',
-    alignSelf: 'center',
-    maxWidth: '90%',
-  },
-  serverSettingsBtnText: {
-    fontSize: 11,
-    color: COLORS.mutedForeground,
-    fontWeight: '500',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.lg,
-  },
-  modalBox: {
-    width: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    ...SHADOWS.large,
-  },
-  modalHeader: {
+  optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  modalTitle: {
-    fontSize: FONTS.title,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  modalSub: {
-    fontSize: FONTS.small,
-    color: COLORS.mutedForeground,
-    marginBottom: SPACING.md,
-  },
-  envList: {
-    gap: 8,
-  },
-  envItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: '#f8fafc',
-  },
-  envItemActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#eff6ff',
-  },
-  envLabel: {
-    fontSize: FONTS.body,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  envLabelActive: {
-    color: COLORS.primary,
-  },
-  envUrl: {
-    fontSize: 11,
-    color: COLORS.mutedForeground,
+    marginBottom: SPACING.lg,
     marginTop: 2,
   },
-  textInputCustom: {
+  rememberMeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    fontSize: FONTS.body,
-    color: COLORS.textPrimary,
+  },
+  checkboxActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+  },
+  rememberMeText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  forgotText: {
+    fontSize: 12,
+    color: '#4f46e5',
+    fontWeight: '600',
+  },
+  loginBtn: {
+    backgroundColor: '#4f46e5',
+  },
+  footerNote: {
+    alignItems: 'center',
+    marginTop: SPACING.xl,
+  },
+  footerNoteText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
 });

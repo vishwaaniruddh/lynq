@@ -56,6 +56,22 @@ class Site extends BaseModel {
      * @return array Array of validation errors
      */
     public function validateRequiredFields(array $data): array {
+        // Auto-derive city/state from address/location if missing
+        if ((empty($data['city']) || empty($data['state'])) && (!empty($data['address']) || !empty($data['location']))) {
+            require_once __DIR__ . '/../utils/LocationParser.php';
+            $addr = $data['address'] ?? $data['location'];
+            $parsed = LocationParser::parse($addr, $data['state'] ?? null, $data['city'] ?? null);
+            if (empty($data['city']) && !empty($parsed['city'])) {
+                $data['city'] = $parsed['city'];
+            }
+            if (empty($data['state']) && !empty($parsed['state'])) {
+                $data['state'] = $parsed['state'];
+            }
+        }
+        if (empty($data['country'])) {
+            $data['country'] = 'India';
+        }
+
         $errors = [];
         
         foreach ($this->requiredFields as $field) {

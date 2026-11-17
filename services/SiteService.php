@@ -369,6 +369,28 @@ class SiteService {
         if (!isset($prepared['status'])) {
             $prepared['status'] = 'active';
         }
+
+        // Auto-derive city, state, zone if missing from address/location
+        if (empty($prepared['city']) || empty($prepared['state']) || empty($prepared['zone'])) {
+            require_once __DIR__ . '/../utils/LocationParser.php';
+            $addr = $prepared['address'] ?? ($data['location'] ?? '');
+            if (!empty($addr) || !empty($prepared['state'])) {
+                $parsed = LocationParser::parse($addr, $prepared['state'] ?? null, $prepared['city'] ?? null);
+                if (empty($prepared['city']) && !empty($parsed['city'])) {
+                    $prepared['city'] = $parsed['city'];
+                }
+                if (empty($prepared['state']) && !empty($parsed['state'])) {
+                    $prepared['state'] = $parsed['state'];
+                }
+                if (empty($prepared['zone']) && !empty($parsed['zone'])) {
+                    $prepared['zone'] = $parsed['zone'];
+                }
+            }
+            if (empty($prepared['zone']) && !empty($prepared['state'])) {
+                require_once __DIR__ . '/../utils/LocationParser.php';
+                $prepared['zone'] = LocationParser::getZoneForState($prepared['state']) ?: 'North';
+            }
+        }
         
         return $prepared;
     }
@@ -830,6 +852,28 @@ class SiteService {
         ];
         unset($site['lho_to_emails']);
         unset($site['lho_cc_emails']);
+
+        // Auto-derive missing city, state, or zone from address/location
+        if (empty($site['city']) || empty($site['state']) || empty($site['zone'])) {
+            require_once __DIR__ . '/../utils/LocationParser.php';
+            $srcLocation = !empty($site['address']) ? $site['address'] : (!empty($site['location']) ? $site['location'] : '');
+            if (!empty($srcLocation) || !empty($site['state'])) {
+                $parsed = LocationParser::parse($srcLocation, $site['state'] ?? null, $site['city'] ?? null);
+                if (empty($site['city']) && !empty($parsed['city'])) {
+                    $site['city'] = $parsed['city'];
+                }
+                if (empty($site['state']) && !empty($parsed['state'])) {
+                    $site['state'] = $parsed['state'];
+                }
+                if (empty($site['zone']) && !empty($parsed['zone'])) {
+                    $site['zone'] = $parsed['zone'];
+                }
+            }
+            if (empty($site['zone']) && !empty($site['state'])) {
+                $site['zone'] = LocationParser::getZoneForState($site['state']) ?: 'North';
+            }
+        }
+
         return $site;
     }
 }

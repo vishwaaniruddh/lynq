@@ -40,6 +40,8 @@ function getMenuIconColor($itemId) {
         'permissions' => 'text-yellow-400',
         'delegation' => 'text-cyan-400',
         'audit' => 'text-orange-400',
+        'email_settings' => 'text-amber-400',
+        'site_email_settings' => 'text-amber-400',
         'settings' => 'text-gray-400',
         // Master modules
         'masters_companies' => 'text-green-400',

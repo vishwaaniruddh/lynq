@@ -106,7 +106,8 @@ class MenuService2 {
                     ['id' => 'sites_add', 'label' => 'Add Site', 'icon' => 'fa-plus', 'url' => '/sites/site_add_custome_form.php', 'permission' => 'sites.create', 'adv_only' => true],
                     ['id' => 'sites_bulk_upload_dynamic', 'label' => 'Bulk Upload', 'icon' => 'fa-upload', 'url' => '/sites/bulk_upload_dynamic.php', 'permission' => 'sites.bulk_upload', 'adv_only' => true],
                     ['id' => 'sites_delegate', 'label' => 'Delegate Sites', 'icon' => 'fa-share-alt', 'url' => '/sites/delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true],
-                    ['id' => 'sites_bulk_delegate', 'label' => 'Bulk Delegate', 'icon' => 'fa-share-square', 'url' => '/sites/bulk_delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true]
+                    ['id' => 'sites_bulk_delegate', 'label' => 'Bulk Delegate', 'icon' => 'fa-share-square', 'url' => '/sites/bulk_delegate.php', 'permission' => 'sites.delegate', 'adv_only' => true],
+                    ['id' => 'site_email_settings', 'label' => 'Email Setting', 'icon' => 'fa-envelope-open-text', 'url' => '/email_settings/index.php', 'permission' => 'sites.view', 'adv_only' => true]
                 ]
             ],
             
@@ -249,6 +250,14 @@ class MenuService2 {
                     'icon' => 'fa-history',
                     'url' => '/audit/index.php',
                     'permission' => 'audit.view',
+                    'adv_only' => true
+                ],
+                [
+                    'id' => 'email_settings',
+                    'label' => 'Email Setting',
+                    'icon' => 'fa-envelope-open-text',
+                    'url' => '/email_settings/index.php',
+                    'permission' => null,
                     'adv_only' => true
                 ],
                 [
