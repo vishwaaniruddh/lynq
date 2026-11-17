@@ -1,0 +1,40 @@
+# Android & iOS build packages
+*.apk
+*.aab
+*.ipa
+mobile_app/LYNQ.apk
+
+# Mobile App build & dependency directories
+mobile_app/node_modules/
+mobile_app/.expo/
+mobile_app/dist/
+mobile_app/web-build/
+mobile_app/android/.gradle/
+mobile_app/android/build/
+mobile_app/android/app/build/
+mobile_app/android/local.properties
+
+# Logs and scratch files
+*.log
+scratch/
+tmp/
+temp/
+
+# Environment files
+.env
+.env.local
+
+# Keystores & sensitive keys
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

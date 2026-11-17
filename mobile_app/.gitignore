@@ -9,3 +9,10 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
+
+# Android & iOS application packages
+*.apk
+*.aab
+*.ipa
+LYNQ.apk
+
